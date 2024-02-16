@@ -1,6 +1,7 @@
 package com.isw.c2sp.ui.theme
 
 import android.content.Context
+import android.graphics.Color.MAGENTA
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,15 +21,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.room.util.copy
+import com.google.android.gms.maps.model.BitmapDescriptor
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.PinConfig
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.gson.Gson
+import com.google.maps.android.compose.AdvancedMarker
+import com.google.maps.android.compose.Circle
 import com.google.maps.android.compose.rememberMarkerState
+import com.isw.c2sp.R
 import com.isw.c2sp.models.Pollution
 import com.isw.c2sp.models.USVGps
 import kotlinx.coroutines.Dispatchers
@@ -53,13 +61,41 @@ fun C2MapUI(
         position = CameraPosition.fromLatLngZoom(c2Pos, 15f)
     }
 
-    var markerPosition by remember {mutableStateOf(LatLng(0.0,0.0))}
+    var markerPosition by remember {  mutableStateOf (LatLng(usvPos.latitude, usvPos.longitude)) } // Initial position
+    var markerData by remember {  mutableStateOf (LatLng(usvPos.latitude, usvPos.longitude)) } // Initial position
+    var isUSVPresent by remember { mutableStateOf(true) }
 
-    LaunchedEffect(Unit){
-        updateMarkerPeriodically { newMarkerPosition ->
-            markerPosition = newMarkerPosition
+    LaunchedEffect(key1 = Unit) {
+        while (true) {
+            val result = withContext(Dispatchers.IO) {
+                val url = URL("https://a5043b0f-1c90-4975-9da3-1f297cac6676.mock.pstmn.io/api/polution/getGpsPar/")
+                val connection  = url.openConnection() as HttpsURLConnection
+
+                if(connection.responseCode == 200)
+                {
+                    val inputSystem = connection.inputStream
+                    val inputStreamReader = InputStreamReader(inputSystem, "UTF-8")
+                    val request = Gson().fromJson(inputStreamReader, USVGps::class.java)
+
+                    markerData = LatLng(request.Latitude / 100, request.Longitude / 100)
+                    markerData = generateNewPosition(markerData)
+                    isUSVPresent = true
+
+                    inputStreamReader.close()
+                    inputSystem.close()
+                }
+                else
+                {
+                    //binding.baseCurrency.text = "Failed Connection"
+                    //markerData = LatLng(0.0, 0.0)
+                    isUSVPresent = false
+                }
+            }
+
+            delay(5*1000) // Change position every second
         }
     }
+
 
     Box(modifier = Modifier.fillMaxSize()) {
         GoogleMap(
@@ -67,14 +103,10 @@ fun C2MapUI(
             cameraPositionState = cameraPositionState,
             properties = mapProperties,
         ) {
-            /*
+
             //markers
             c2Maker(c2Pos = c2Pos)
-            usvMarker(usvPos = markerPosition)
-
-             */
-
-            simpleMaker(markerPosition)
+            usvMarker(usvPos = markerData)
         }
 
         Column(){
@@ -86,22 +118,37 @@ fun C2MapUI(
     }
 }
 
+fun generateNewPosition(currentPosition: LatLng): LatLng {
+    // Replace this with your logic to generate a new marker position
+    // For example, you can randomly generate a new position
+    return LatLng(currentPosition.latitude + getRandomOffset(), currentPosition.longitude + getRandomOffset())
+}
+
+fun getRandomOffset(): Double {
+    // Generate a small random offset for demo purposes
+    return (Math.random() - 0.5) / 50.0
+}
+
 @Composable
 fun c2Maker(c2Pos: LatLng){
     Marker(
         state = MarkerState(c2Pos),
         title = "C2",
-        snippet = "(${c2Pos.latitude},${c2Pos.longitude})"
+        snippet = "(${c2Pos.latitude},${c2Pos.longitude})",
+        icon = BitmapDescriptorFactory.fromResource(R.mipmap.c2)
     )
+    Circle(center = c2Pos,
+        radius = 1000.0){
+    }
 }
 
 @Composable
 fun usvMarker(usvPos: LatLng){
-    val usvPos2 = LatLng(usvPos.latitude*1.0001, usvPos.longitude*1.0001)
     Marker(
-        state = MarkerState(usvPos2),
+        state = MarkerState(usvPos),
         title = "USV",
-        snippet = "(${usvPos2.latitude},${usvPos2.longitude})"
+        snippet = "(${usvPos.latitude},${usvPos.longitude})",
+        icon = BitmapDescriptorFactory.fromResource(R.mipmap.usv)
     )
 }
 
@@ -202,45 +249,3 @@ class pollutionVM : androidx.lifecycle.ViewModel(){
     }
 }
 
-private suspend fun updateMarkerPeriodically(updateCallback: (LatLng) -> Unit) {
-    val updateDelay = 5000L
-
-    coroutineScope {
-        while(isActive){
-            var markerData = LatLng(0.0, 0.0)
-
-            val result = withContext(Dispatchers.IO) {
-                val url = URL("https://a5043b0f-1c90-4975-9da3-1f297cac6676.mock.pstmn.io/api/polution/getGpsPar/")
-                val connection  = url.openConnection() as HttpsURLConnection
-
-                if(connection.responseCode == 200)
-                {
-                    val inputSystem = connection.inputStream
-                    val inputStreamReader = InputStreamReader(inputSystem, "UTF-8")
-                    val request = Gson().fromJson(inputStreamReader, USVGps::class.java)
-
-                    markerData = LatLng(request.Latitude, request.Longitude)
-
-                    inputStreamReader.close()
-                    inputSystem.close()
-                }
-                else
-                {
-                    //binding.baseCurrency.text = "Failed Connection"
-                    markerData = LatLng(0.0, 0.0)
-                }
-            }
-
-            // update callback
-            updateCallback(markerData)
-
-            delay(updateDelay)
-
-        }
-    }
-}
-
-@Composable
-fun simpleMaker(markerPosition: LatLng) {
-
-}

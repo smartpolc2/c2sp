@@ -41,3 +41,8 @@ fun getCurrentLocation(context: Context, onLocationFetched: (location: LatLng) -
         }
 
 }
+
+fun simUsvPos(c2Pos: LatLng) :LatLng {
+    //delay(10000)
+    return LatLng(c2Pos.latitude + 0.007, c2Pos.longitude)
+}

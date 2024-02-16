@@ -18,6 +18,7 @@ import com.google.gson.Gson
 import com.isw.c2sp.models.USVGps
 import com.isw.c2sp.utils.checkForPermission
 import com.isw.c2sp.utils.getCurrentLocation
+import com.isw.c2sp.utils.simUsvPos
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -51,7 +52,6 @@ fun C2UI(context: Context){
 fun MapScreen(context: Context){
     var showMap by remember { mutableStateOf(false) }
     var c2Loc by remember { mutableStateOf(LatLng(0.0,0.0)) }
-
     var usvLoc by remember { mutableStateOf(LatLng(0.0,0.0)) }
 
     getCurrentLocation(context) {
@@ -61,12 +61,11 @@ fun MapScreen(context: Context){
 
     /*
     LaunchedEffect(Unit){
-        updateMarker { newUsvLoc ->
-            usvLoc = newUsvLoc
-        }
+        usvLoc = simUsvPos(c2Loc)
     }
 
      */
+    usvLoc = simUsvPos(c2Loc)
 
     if (showMap)
     {
