@@ -54,69 +54,27 @@ fun MapScreen(context: Context){
     var c2Loc by remember { mutableStateOf(LatLng(0.0,0.0)) }
     var usvLoc by remember { mutableStateOf(LatLng(0.0,0.0)) }
 
+    var newNode by remember {
+        mutableStateOf<Boolean?>(null)    }
+
     getCurrentLocation(context) {
         showMap = true
         c2Loc = it
     }
 
-    /*
-    LaunchedEffect(Unit){
-        usvLoc = simUsvPos(c2Loc)
-    }
-
-     */
     usvLoc = simUsvPos(c2Loc)
 
     if (showMap)
     {
         //display C2 map
         C2MapUI(context = context,
-            c2Loc,
-            usvLoc)
+            c2Pos = c2Loc,
+            usvPos = usvLoc,
+            newNode = newNode,
+            onNewNodeClick = { newNode = it  }
+        )
     }
     else{
         Text(text = "Loading map...")
     }
 }
-
-/*
-private suspend fun updateMarker(updateCallback: (LatLng) -> Unit) {
-    val updateDelay = 5000L
-
-    coroutineScope {
-        while(isActive){
-            var markerData = LatLng(0.0, 0.0)
-
-            val result = withContext(Dispatchers.IO) {
-                val url = URL("https://a5043b0f-1c90-4975-9da3-1f297cac6676.mock.pstmn.io/api/polution/getGpsPar/")
-                val connection  = url.openConnection() as HttpsURLConnection
-
-                if(connection.responseCode == 200)
-                {
-                    val inputSystem = connection.inputStream
-                    val inputStreamReader = InputStreamReader(inputSystem, "UTF-8")
-                    val request = Gson().fromJson(inputStreamReader, USVGps::class.java)
-
-                    inputStreamReader.close()
-                    inputSystem.close()
-
-                    markerData = LatLng(request.Latitude, request.Longitude)
-                }
-                else
-                {
-                    //binding.baseCurrency.text = "Failed Connection"
-                    markerData = LatLng(0.0, 0.0)
-                }
-            }
-
-            // update callback
-            updateCallback(markerData)
-
-            delay(updateDelay)
-
-        }
-    }
-}
-
- */
-

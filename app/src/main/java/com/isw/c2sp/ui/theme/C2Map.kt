@@ -5,19 +5,23 @@ import android.graphics.Color.MAGENTA
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -35,6 +39,7 @@ import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.gson.Gson
 import com.google.maps.android.compose.AdvancedMarker
 import com.google.maps.android.compose.Circle
+import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberMarkerState
 import com.isw.c2sp.R
 import com.isw.c2sp.models.Pollution
@@ -54,7 +59,9 @@ fun C2MapUI(
     context: Context,
     c2Pos: LatLng,
     usvPos: LatLng,
-    mapProperties: MapProperties = MapProperties()
+    newNode: Boolean? = null,
+    mapProperties: MapProperties = MapProperties(),
+    onNewNodeClick: (newNode: Boolean?) -> Unit,
 ){
 
     val cameraPositionState = rememberCameraPositionState {
@@ -64,6 +71,12 @@ fun C2MapUI(
     var markerPosition by remember {  mutableStateOf (LatLng(usvPos.latitude, usvPos.longitude)) } // Initial position
     var markerData by remember {  mutableStateOf (LatLng(usvPos.latitude, usvPos.longitude)) } // Initial position
     var isUSVPresent by remember { mutableStateOf(true) }
+
+    //usv planned path
+    val usvPath = remember {
+        mutableStateListOf(c2Pos)
+        //mutableStateListOf(LatLng)
+    }
 
     LaunchedEffect(key1 = Unit) {
         while (true) {
@@ -102,11 +115,36 @@ fun C2MapUI(
             modifier = Modifier.matchParentSize(),
             cameraPositionState = cameraPositionState,
             properties = mapProperties,
+            onMapClick = {
+                /*
+                if (usvPath.size == 1){
+                    usvPath.clear()
+                }
+
+                 */
+                usvPath.add(it)
+            }
         ) {
 
             //markers
             c2Maker(c2Pos = c2Pos)
             usvMarker(usvPos = markerData)
+
+            //usv planned path
+            if (usvPath.size > 1){
+                usvPath.toList().forEach {
+                    Marker(
+                        state = MarkerState(position = it),
+                        title = "Location",
+                        snippet = "Marker in current location",
+                        //icon = BitmapDescriptorFactory.fromResource(R.mipmap.poi)
+                    )
+                }
+                if (newNode == true){
+                    Polyline(points = usvPath, color = Color.Red)
+                }
+            }
+
         }
 
         Column(){
@@ -114,8 +152,45 @@ fun C2MapUI(
             rcUI()
             //pollution panel UI
             pollutionUI()
+
+            if (usvPath.size > 1){
+                Button(
+                    onClick = {
+                        onNewNodeClick(false)
+                        usvPath.clear()
+                        //usvPath.add(usvPos)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                ) {
+                    Text(text = "Clear", color = Color.White)
+                }
+
+                Spacer(modifier = Modifier.padding(4.dp))
+                Button(onClick = {
+                    onNewNodeClick(true)
+
+                }){
+                    Text(text = "Draw")
+                }
+            }
         }
     }
+}
+
+@Composable
+fun drawPath(usvPath: List<LatLng>) {
+    if (usvPath.size > 1){
+        usvPath.toList().forEach {
+            Marker(
+                state = MarkerState(position = it),
+                title = "Location",
+                snippet = "Marker in current location",
+                //icon = BitmapDescriptorFactory.fromResource(R.mipmap.poi)
+            )
+        }
+        Polyline(points = usvPath, color = Color.Red)
+    }
+
 }
 
 fun generateNewPosition(currentPosition: LatLng): LatLng {
@@ -137,9 +212,6 @@ fun c2Maker(c2Pos: LatLng){
         snippet = "(${c2Pos.latitude},${c2Pos.longitude})",
         icon = BitmapDescriptorFactory.fromResource(R.mipmap.c2)
     )
-    Circle(center = c2Pos,
-        radius = 1000.0){
-    }
 }
 
 @Composable
