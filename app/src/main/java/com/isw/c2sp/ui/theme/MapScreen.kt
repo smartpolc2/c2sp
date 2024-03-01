@@ -1,32 +1,24 @@
 package com.isw.c2sp.ui.theme
 
-import android.app.admin.DevicePolicyManager.InstallSystemUpdateCallback
 import android.content.Context
+import android.util.Log
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.google.android.gms.maps.model.LatLng
-import com.google.gson.Gson
-import com.isw.c2sp.models.USVGps
+import com.isw.c2sp.models.USVNode
 import com.isw.c2sp.utils.checkForPermission
 import com.isw.c2sp.utils.getCurrentLocation
+import com.isw.c2sp.utils.loadUSVPath
 import com.isw.c2sp.utils.simUsvPos
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.withContext
-import java.io.InputStreamReader
-import java.net.URL
-import javax.net.ssl.HttpsURLConnection
+import kotlinx.serialization.json.Json
 
 @Composable
 fun C2UI(context: Context){
@@ -62,14 +54,31 @@ fun MapScreen(context: Context){
         c2Loc = it
     }
 
+    val usvPath = mutableListOf<LatLng>()
+
     usvLoc = simUsvPos(c2Loc)
 
     if (showMap)
     {
+        try{
+            val filename = "usv.path"
+            val json = loadUSVPath(context, filename)
+            val obj = Json.decodeFromString<List<USVNode>>(json)
+            obj.forEach {
+                //usvPath.add(USVNode(it.latitude, it.longitude))
+                usvPath.add(LatLng(it.Latitude, it.Longitude))
+            }
+        }
+        catch(e: Exception){
+            Log.e("loading USV path - Exception caught", e.toString())
+        }
+
+
         //display C2 map
         C2MapUI(context = context,
             c2Pos = c2Loc,
             usvPos = usvLoc,
+            inputUSVPath = usvPath,
             newNode = newNode,
             onNewNodeClick = { newNode = it  }
         )

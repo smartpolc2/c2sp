@@ -2,6 +2,7 @@ package com.isw.c2sp.ui.theme
 
 import android.content.Context
 import android.graphics.Color.MAGENTA
+import android.util.Log
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -41,15 +42,22 @@ import com.google.maps.android.compose.AdvancedMarker
 import com.google.maps.android.compose.Circle
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberMarkerState
+import com.google.maps.android.data.kml.KmlLayer
 import com.isw.c2sp.R
 import com.isw.c2sp.models.Pollution
 import com.isw.c2sp.models.USVGps
+import com.isw.c2sp.models.USVNode
+import com.isw.c2sp.utils.saveUSVPath
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import java.io.BufferedReader
+import java.io.FileOutputStream
 import java.io.InputStreamReader
 import java.net.URL
 import javax.net.ssl.HttpsURLConnection
@@ -59,6 +67,7 @@ fun C2MapUI(
     context: Context,
     c2Pos: LatLng,
     usvPos: LatLng,
+    inputUSVPath: List<LatLng>,
     newNode: Boolean? = null,
     mapProperties: MapProperties = MapProperties(),
     onNewNodeClick: (newNode: Boolean?) -> Unit,
@@ -78,6 +87,7 @@ fun C2MapUI(
         //mutableStateListOf(LatLng)
     }
 
+    //detect USV presence
     LaunchedEffect(key1 = Unit) {
         while (true) {
             val result = withContext(Dispatchers.IO) {
@@ -109,7 +119,9 @@ fun C2MapUI(
         }
     }
 
+    //val layer = KmlLayer(map, R.raw.geojson_file, context)
 
+    //C2 map
     Box(modifier = Modifier.fillMaxSize()) {
         GoogleMap(
             modifier = Modifier.matchParentSize(),
@@ -145,6 +157,18 @@ fun C2MapUI(
                 }
             }
 
+            //input USV path
+            if (inputUSVPath.size > 1){
+                    inputUSVPath.toList().forEach {
+                        Marker(
+                            state = MarkerState(position = it),
+                            title = "Location",
+                            snippet = "Marker in current location",
+                            //icon = BitmapDescriptorFactory.fromResource(R.mipmap.poi)
+                        )
+                    }
+                    Polyline(points = inputUSVPath, color = Color.Green)
+            }
         }
 
         Column(){
@@ -167,6 +191,19 @@ fun C2MapUI(
 
                 Spacer(modifier = Modifier.padding(4.dp))
                 Button(onClick = {
+                    try{
+                        val jsonValues = mutableListOf<USVNode>()
+                        usvPath.toList().forEach {
+                            jsonValues.add(USVNode(it.latitude, it.longitude))
+                        }
+                        val json = Json.encodeToString(jsonValues)
+
+                        val filename = "usv.path"
+                        saveUSVPath(context, filename, json)
+                    } catch (e: Exception){
+                        Log.e("saving USV path - Exception caught", e.toString())
+                    }
+
                     onNewNodeClick(true)
 
                 }){
