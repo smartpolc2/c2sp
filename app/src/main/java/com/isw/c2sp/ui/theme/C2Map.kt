@@ -47,6 +47,8 @@ import com.isw.c2sp.R
 import com.isw.c2sp.models.Pollution
 import com.isw.c2sp.models.USVGps
 import com.isw.c2sp.models.USVNode
+import com.isw.c2sp.utils.calculateDistance
+import com.isw.c2sp.utils.formattedValue
 import com.isw.c2sp.utils.saveUSVPath
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
@@ -208,6 +210,7 @@ fun C2MapUI(
 
                 }){
                     Text(text = "Draw")
+                    Text(text = "${formattedValue(calculateDistance(usvPath))}")
                 }
             }
         }
