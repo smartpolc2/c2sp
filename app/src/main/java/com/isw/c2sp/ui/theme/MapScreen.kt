@@ -13,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.MapProperties
 import com.isw.c2sp.models.USVNode
 import com.isw.c2sp.utils.checkForPermission
 import com.isw.c2sp.utils.getCurrentLocation
@@ -45,6 +46,7 @@ fun MapScreen(context: Context){
     var showMap by remember { mutableStateOf(false) }
     var c2Loc by remember { mutableStateOf(LatLng(0.0,0.0)) }
     var usvLoc by remember { mutableStateOf(LatLng(0.0,0.0)) }
+    var mapProperties by remember { mutableStateOf(MapProperties()) }
 
     var newNode by remember {
         mutableStateOf<Boolean?>(null)    }
@@ -60,27 +62,11 @@ fun MapScreen(context: Context){
 
     if (showMap)
     {
-        try{
-            val filename = "usv.path"
-            val json = loadUSVPath(context, filename)
-            val obj = Json.decodeFromString<List<USVNode>>(json)
-            obj.forEach {
-                //usvPath.add(USVNode(it.latitude, it.longitude))
-                usvPath.add(LatLng(it.Latitude, it.Longitude))
-            }
-        }
-        catch(e: Exception){
-            Log.e("loading USV path - Exception caught", e.toString())
-        }
-
-
         //display C2 map
         C2MapUI(context = context,
             c2Pos = c2Loc,
             usvPos = usvLoc,
-            inputUSVPath = usvPath,
-            newNode = newNode,
-            onNewNodeClick = { newNode = it  }
+            mapProperties
         )
     }
     else{

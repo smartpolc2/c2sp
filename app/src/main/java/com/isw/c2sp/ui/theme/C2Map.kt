@@ -1,7 +1,6 @@
 package com.isw.c2sp.ui.theme
 
 import android.content.Context
-import android.graphics.Color.MAGENTA
 import android.util.Log
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,7 +13,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -26,40 +24,30 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.room.util.copy
-import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.PinConfig
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.gson.Gson
-import com.google.maps.android.compose.AdvancedMarker
-import com.google.maps.android.compose.Circle
 import com.google.maps.android.compose.Polyline
-import com.google.maps.android.compose.rememberMarkerState
-import com.google.maps.android.data.kml.KmlLayer
 import com.isw.c2sp.R
 import com.isw.c2sp.models.Pollution
 import com.isw.c2sp.models.USVGps
 import com.isw.c2sp.models.USVNode
 import com.isw.c2sp.utils.calculateDistance
 import com.isw.c2sp.utils.formattedValue
+import com.isw.c2sp.utils.loadUSVPath
 import com.isw.c2sp.utils.saveUSVPath
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import java.io.BufferedReader
-import java.io.FileOutputStream
 import java.io.InputStreamReader
 import java.net.URL
 import javax.net.ssl.HttpsURLConnection
@@ -69,25 +57,24 @@ fun C2MapUI(
     context: Context,
     c2Pos: LatLng,
     usvPos: LatLng,
-    inputUSVPath: List<LatLng>,
-    newNode: Boolean? = null,
-    mapProperties: MapProperties = MapProperties(),
-    onNewNodeClick: (newNode: Boolean?) -> Unit,
+    mapProperties: MapProperties = MapProperties()
 ){
 
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(c2Pos, 15f)
     }
 
-    var markerPosition by remember {  mutableStateOf (LatLng(usvPos.latitude, usvPos.longitude)) } // Initial position
     var markerData by remember {  mutableStateOf (LatLng(usvPos.latitude, usvPos.longitude)) } // Initial position
     var isUSVPresent by remember { mutableStateOf(true) }
 
     //usv planned path
-    val usvPath = remember {
+    var usvPath = remember {
         mutableStateListOf(c2Pos)
         //mutableStateListOf(LatLng)
     }
+
+    var clickedPoints by remember { mutableStateOf(listOf<LatLng>()) }
+    var polyline by remember { mutableStateOf(emptyList<LatLng>()) }
 
     //detect USV presence
     LaunchedEffect(key1 = Unit) {
@@ -130,47 +117,20 @@ fun C2MapUI(
             cameraPositionState = cameraPositionState,
             properties = mapProperties,
             onMapClick = {
-                /*
-                if (usvPath.size == 1){
-                    usvPath.clear()
-                }
+                clickPoint ->
+                usvPath.add(clickPoint)
 
-                 */
-                usvPath.add(it)
+                clickedPoints = clickedPoints.toMutableList().apply { add(clickPoint) }
+                polyline = clickedPoints
+
             }
         ) {
-
             //markers
             c2Maker(c2Pos = c2Pos)
             usvMarker(usvPos = markerData)
 
-            //usv planned path
-            if (usvPath.size > 1){
-                usvPath.toList().forEach {
-                    Marker(
-                        state = MarkerState(position = it),
-                        title = "Location",
-                        snippet = "Marker in current location",
-                        //icon = BitmapDescriptorFactory.fromResource(R.mipmap.poi)
-                    )
-                }
-                if (newNode == true){
-                    Polyline(points = usvPath, color = Color.Red)
-                }
-            }
-
-            //input USV path
-            if (inputUSVPath.size > 1){
-                    inputUSVPath.toList().forEach {
-                        Marker(
-                            state = MarkerState(position = it),
-                            title = "Location",
-                            snippet = "Marker in current location",
-                            //icon = BitmapDescriptorFactory.fromResource(R.mipmap.poi)
-                        )
-                    }
-                    Polyline(points = inputUSVPath, color = Color.Green)
-            }
+            // Planned path
+            DrawPolyline(polyline)
         }
 
         Column(){
@@ -179,20 +139,42 @@ fun C2MapUI(
             //pollution panel UI
             pollutionUI()
 
-            if (usvPath.size > 1){
-                Button(
-                    onClick = {
-                        onNewNodeClick(false)
-                        usvPath.clear()
-                        //usvPath.add(usvPos)
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
-                ) {
-                    Text(text = "Clear", color = Color.White)
-                }
-
-                Spacer(modifier = Modifier.padding(4.dp))
+            // path UI
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp, vertical = 4.dp)
+            ){
                 Button(onClick = {
+                    usvPath.clear()
+
+                    clickedPoints = clickedPoints.toMutableList().apply { clear() }
+                    polyline = clickedPoints
+
+                    Log.i("Open plan", "loading default usv path")
+                    try{
+                        val filename = "usv.path"
+                        val json = loadUSVPath(context, filename)
+                        val obj = Json.decodeFromString<List<USVNode>>(json)
+                        obj.forEach {
+                            //usvPath.add(USVNode(it.latitude, it.longitude))
+                            usvPath.add(LatLng(it.Latitude, it.Longitude))
+                        }
+                        Log.i("Open plan", "loading default usv path succesfully")
+                    }
+                    catch(e: Exception){
+                        Log.e("loading USV path - Exception caught", e.toString())
+                    }
+
+                    usvPath.forEach(){
+                        clickedPoints = clickedPoints.toMutableList().apply { add(it) }
+                    }
+                    polyline = clickedPoints
+                }){
+                    Text("Open plan")
+                }
+                Button(onClick = {
+                    Log.i("Save plan", "saving usv path")
                     try{
                         val jsonValues = mutableListOf<USVNode>()
                         usvPath.toList().forEach {
@@ -202,15 +184,27 @@ fun C2MapUI(
 
                         val filename = "usv.path"
                         saveUSVPath(context, filename, json)
+                        Log.i("Save plan", "saving usv path succesfully")
                     } catch (e: Exception){
                         Log.e("saving USV path - Exception caught", e.toString())
                     }
-
-                    onNewNodeClick(true)
-
                 }){
-                    Text(text = "Draw")
-                    Text(text = "${formattedValue(calculateDistance(usvPath))}")
+                    Text("Save plan")
+                    //Text(text = "${formattedValue(calculateDistance(usvPath))}km)")
+                }
+            }
+            //operations with path
+            if (usvPath.size > 1){
+                Button(
+                    onClick = {
+                        usvPath.clear()
+
+                        clickedPoints = clickedPoints.toMutableList().apply { clear() }
+                        polyline = clickedPoints
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                ) {
+                    Text(text = "Clear", color = Color.White)
                 }
             }
         }
@@ -297,6 +291,11 @@ fun rcUI(){
 }
 
 @Composable
+fun displayUsvPlannedPath(usvPath: List<LatLng>){
+    Polyline(points = usvPath, color = Color.Red)
+}
+
+@Composable
 fun pollutionUI(){
 
     val viewModel: pollutionVM = viewModel()
@@ -313,6 +312,7 @@ fun pollutionUI(){
         }
     }
 }
+
 
 class pollutionVM : androidx.lifecycle.ViewModel(){
     var pressure: Double by androidx.compose.runtime.mutableDoubleStateOf(0.0)
