@@ -31,18 +31,19 @@ fun MapWithPolylines(){
             }
         ) {
             // Other map elements like markers etc.
-            DrawPolyline(polyline)
+            DrawPolyline(polyline, Color.Red)
         }
 
     }
 }
 
 @Composable
-fun DrawPolyline(polyline: List<LatLng>) {
+fun DrawPolyline(polyline: List<LatLng>, color: Color) {
     if (polyline.isNotEmpty())  {
         Polyline(
             points = polyline,
-            color = Color.Red, // Customize color
+            //color = Color.Red, // Customize color
+            color = color,
             width = 5f, // Adjust width
             clickable = false // Disable clicks on the polyline itself
         )

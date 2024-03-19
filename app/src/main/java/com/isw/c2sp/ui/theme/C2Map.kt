@@ -76,6 +76,8 @@ fun C2MapUI(
     var clickedPoints by remember { mutableStateOf(listOf<LatLng>()) }
     var polyline by remember { mutableStateOf(emptyList<LatLng>()) }
 
+    var realTrack by remember { mutableStateOf(emptyList<LatLng>()) }
+
     //detect USV presence
     LaunchedEffect(key1 = Unit) {
         while (true) {
@@ -92,6 +94,8 @@ fun C2MapUI(
                     markerData = LatLng(request.Latitude / 100, request.Longitude / 100)
                     markerData = generateNewPosition(markerData)
                     isUSVPresent = true
+
+                    realTrack = realTrack.toMutableList().apply { add(markerData) }
 
                     inputStreamReader.close()
                     inputSystem.close()
@@ -130,7 +134,8 @@ fun C2MapUI(
             usvMarker(usvPos = markerData)
 
             // Planned path
-            DrawPolyline(polyline)
+            DrawPolyline(polyline, Color.Red)
+            DrawPolyline(polyline = realTrack, Color.Green)
         }
 
         Column(){
