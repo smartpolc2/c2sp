@@ -9,8 +9,17 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -38,8 +47,6 @@ import com.isw.c2sp.R
 import com.isw.c2sp.models.Pollution
 import com.isw.c2sp.models.USVGps
 import com.isw.c2sp.models.USVNode
-import com.isw.c2sp.utils.calculateDistance
-import com.isw.c2sp.utils.formattedValue
 import com.isw.c2sp.utils.loadUSVPath
 import com.isw.c2sp.utils.saveUSVPath
 import kotlinx.coroutines.Dispatchers
@@ -48,12 +55,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import java.io.BufferedReader
+import java.io.FileOutputStream
 import java.io.InputStreamReader
 import java.net.URL
 import javax.net.ssl.HttpsURLConnection
 
 @Composable
-fun C2MapUI(
+fun c2MapUI(
     context: Context,
     c2Pos: LatLng,
     usvPos: LatLng,
@@ -76,7 +85,9 @@ fun C2MapUI(
     var clickedPoints by remember { mutableStateOf(listOf<LatLng>()) }
     var polyline by remember { mutableStateOf(emptyList<LatLng>()) }
 
-    var realTrack by remember { mutableStateOf(emptyList<LatLng>()) }
+    var pathViewModel: PathOpVM = viewModel()
+
+    var c2OpMode by remember { mutableStateOf("") }
 
     //detect USV presence
     LaunchedEffect(key1 = Unit) {
@@ -94,8 +105,6 @@ fun C2MapUI(
                     markerData = LatLng(request.Latitude / 100, request.Longitude / 100)
                     markerData = generateNewPosition(markerData)
                     isUSVPresent = true
-
-                    realTrack = realTrack.toMutableList().apply { add(markerData) }
 
                     inputStreamReader.close()
                     inputSystem.close()
@@ -122,11 +131,13 @@ fun C2MapUI(
             properties = mapProperties,
             onMapClick = {
                 clickPoint ->
-                usvPath.add(clickPoint)
+                    usvPath.add(clickPoint)
 
                 clickedPoints = clickedPoints.toMutableList().apply { add(clickPoint) }
                 polyline = clickedPoints
 
+                pathViewModel.onMapClick(clickPoint)
+                c2OpMode = "planning"
             }
         ) {
             //markers
@@ -134,70 +145,13 @@ fun C2MapUI(
             usvMarker(usvPos = markerData)
 
             // Planned path
-            DrawPolyline(polyline, Color.Red)
-            DrawPolyline(polyline = realTrack, Color.Green)
+            Log.i("GoogleMap Recompose","${polyline.size}")
+            DrawPolyline(polyline)
         }
 
         Column(){
-            //remote controll UI
-            rcUI()
-            //pollution panel UI
-            pollutionUI()
+            c2MainMenu(context, "")
 
-            // path UI
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp, vertical = 4.dp)
-            ){
-                Button(onClick = {
-                    usvPath.clear()
-
-                    clickedPoints = clickedPoints.toMutableList().apply { clear() }
-                    polyline = clickedPoints
-
-                    Log.i("Open plan", "loading default usv path")
-                    try{
-                        val filename = "usv.path"
-                        val json = loadUSVPath(context, filename)
-                        val obj = Json.decodeFromString<List<USVNode>>(json)
-                        obj.forEach {
-                            //usvPath.add(USVNode(it.latitude, it.longitude))
-                            usvPath.add(LatLng(it.Latitude, it.Longitude))
-                        }
-                        Log.i("Open plan", "loading default usv path succesfully")
-                    }
-                    catch(e: Exception){
-                        Log.e("loading USV path - Exception caught", e.toString())
-                    }
-
-                    usvPath.forEach(){
-                        clickedPoints = clickedPoints.toMutableList().apply { add(it) }
-                    }
-                    polyline = clickedPoints
-                }){
-                    Text("Open plan")
-                }
-                Button(onClick = {
-                    Log.i("Save plan", "saving usv path")
-                    try{
-                        val jsonValues = mutableListOf<USVNode>()
-                        usvPath.toList().forEach {
-                            jsonValues.add(USVNode(it.latitude, it.longitude))
-                        }
-                        val json = Json.encodeToString(jsonValues)
-
-                        val filename = "usv.path"
-                        saveUSVPath(context, filename, json)
-                        Log.i("Save plan", "saving usv path succesfully")
-                    } catch (e: Exception){
-                        Log.e("saving USV path - Exception caught", e.toString())
-                    }
-                }){
-                    Text("Save plan")
-                    //Text(text = "${formattedValue(calculateDistance(usvPath))}km)")
-                }
-            }
             //operations with path
             if (usvPath.size > 1){
                 Button(
@@ -206,6 +160,8 @@ fun C2MapUI(
 
                         clickedPoints = clickedPoints.toMutableList().apply { clear() }
                         polyline = clickedPoints
+
+                        pathViewModel.onClearButton()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
                 ) {
@@ -264,33 +220,39 @@ fun usvMarker(usvPos: LatLng){
 }
 
 @Composable
-fun rcUI(){
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 4.dp)
-    ){
-        Button(onClick = {
+fun c2MainMenu(context: Context, c2OPMode: String){
 
-        }){
-            Text("Forward")
-        }
-        Row() {
-            Button(onClick = {
+    var c2OpMode by remember { mutableStateOf(c2OPMode) }
 
-            }){
-                Text("Left")
+    Column(){
+        // Planning & Monitoring buttons
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp, vertical = 4.dp)
+        ){
+            val dButton = 25.dp
+            FloatingActionButton(onClick = { c2OpMode = "planning" },
+                modifier = Modifier
+                    .size(dButton, dButton)) {
+                androidx.compose.material3.Icon(Icons.Default.Build, contentDescription = "Planning")
             }
-            Button(onClick = {
-
-            }){
-                Text("Right")
+            FloatingActionButton(onClick = { c2OpMode = "monitoring" },
+                modifier = Modifier
+                    .size(dButton, dButton)) {
+                androidx.compose.material3.Icon(Icons.Default.Place, contentDescription = "Monitoring")
             }
-        }
-        Button(onClick = {
 
-        }){
-            Text("Backward")
+            Spacer(modifier = Modifier.size(50.dp))
+
+            //display available operations depending on c2 modes
+            if (c2OpMode == "planning"){
+                showPlanningMenu(context)
+            }
+
+            if (c2OpMode == "monitoring"){
+                showMonitoringMenu(context)
+            }
         }
     }
 }
@@ -318,6 +280,69 @@ fun pollutionUI(){
     }
 }
 
+class PathOpVM: androidx.lifecycle.ViewModel(){
+    /*
+    var usvPath = mutableListOf<LatLng>()
+        private set
+
+     */
+
+    private var _usvPath = mutableStateListOf<LatLng>()
+    var usvPath: List<LatLng> = _usvPath
+
+    fun onOpenButtonClick(context: Context){
+        viewModelScope.launch {
+            // process Open Plan button click
+            usvPath.toMutableList().apply { clear() }
+            Log.i("Open plan", "loading default usv path")
+            try{
+                val filename = "usv.path"
+                val json = loadUSVPath(context, filename)
+                val obj = Json.decodeFromString<List<USVNode>>(json)
+                obj.forEach {
+                    //usvPath.add(USVNode(it.latitude, it.longitude))
+                    usvPath.toMutableList().apply { add(LatLng(it.Latitude, it.Longitude)) }
+                }
+                Log.i("Open plan", "loading default usv path succesfully")
+            }
+            catch(e: Exception){
+                Log.e("loading USV path - Exception caught", e.toString())
+            }
+        }
+    }
+
+    fun onSaveButtonClick(context: Context){
+        viewModelScope.launch {
+            // process Save Plan button click
+
+            Log.i("Save plan", "saving usv path")
+            try{
+                val jsonValues = mutableListOf<USVNode>()
+                usvPath.toList().forEach {
+                    jsonValues.add(USVNode(it.latitude, it.longitude))
+                }
+                val json = Json.encodeToString(jsonValues)
+
+                val filename = "usv.path"
+                saveUSVPath(context, filename, json)
+                Log.i("Save plan", "saving usv path succesfully")
+            } catch (e: Exception){
+                Log.e("saving USV path - Exception caught", e.toString())
+            }
+        }
+    }
+
+    fun onMapClick(clickPoint: LatLng){
+        //usvPath.toMutableList().apply { add(clickPoint) }
+        _usvPath.add(clickPoint)
+        Log.i("onMapClick", "clickPoint ${clickPoint}")
+    }
+
+    fun onClearButton() {
+        //usvPath.toMutableList().apply { clear() }
+        _usvPath.clear()
+    }
+}
 
 class pollutionVM : androidx.lifecycle.ViewModel(){
     var pressure: Double by androidx.compose.runtime.mutableDoubleStateOf(0.0)
@@ -363,6 +388,54 @@ class pollutionVM : androidx.lifecycle.ViewModel(){
         pH = pollution.pHx100.toDouble() / 100
         orp = pollution.ORPmVx10.toDouble() / 10
 
+    }
+}
+
+@Composable
+fun showPlanningMenu(context: Context){
+
+    val viewModel: PathOpVM = viewModel()
+
+    Row(){
+        Button(onClick = {
+            viewModel.onOpenButtonClick(context)
+        }){
+            Text("Open plan")
+        }
+        Button(onClick = {
+            viewModel.onSaveButtonClick(context)
+        }){
+            Text("Save plan")
+        }
+    }
+}
+
+@Composable
+fun showMonitoringMenu(context: Context){
+    val dButton = 25.dp
+    Column(){
+        FloatingActionButton(onClick = {  },
+            modifier = Modifier
+                .size(dButton, dButton)) {
+            androidx.compose.material3.Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Forward")
+        }
+        Row() {
+            FloatingActionButton(onClick = {  },
+                modifier = Modifier
+                    .size(dButton, dButton)) {
+                androidx.compose.material3.Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Left")
+            }
+            FloatingActionButton(onClick = {  },
+                modifier = Modifier
+                    .size(dButton, dButton)) {
+                androidx.compose.material3.Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Right")
+            }
+        }
+        FloatingActionButton(onClick = {  },
+            modifier = Modifier
+                .size(dButton, dButton)) {
+            androidx.compose.material3.Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Backward")
+        }
     }
 }
 

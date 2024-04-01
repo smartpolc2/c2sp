@@ -18,7 +18,6 @@ class MainActivity : ComponentActivity() {
             C2UI(this)
 
             //otherMap()
-
         }
     }
 

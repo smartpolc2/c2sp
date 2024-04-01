@@ -2,6 +2,7 @@ package com.isw.c2sp.utils
 
 import android.content.Context
 import android.util.Log
+import kotlinx.coroutines.CoroutineScope
 import java.io.BufferedReader
 import java.io.FileOutputStream
 import java.io.InputStreamReader

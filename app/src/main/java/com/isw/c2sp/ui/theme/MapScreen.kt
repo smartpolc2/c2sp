@@ -1,7 +1,6 @@
 package com.isw.c2sp.ui.theme
 
 import android.content.Context
-import android.util.Log
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -14,12 +13,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.MapProperties
-import com.isw.c2sp.models.USVNode
 import com.isw.c2sp.utils.checkForPermission
 import com.isw.c2sp.utils.getCurrentLocation
-import com.isw.c2sp.utils.loadUSVPath
 import com.isw.c2sp.utils.simUsvPos
-import kotlinx.serialization.json.Json
 
 @Composable
 fun C2UI(context: Context){
@@ -63,11 +59,13 @@ fun MapScreen(context: Context){
     if (showMap)
     {
         //display C2 map
-        C2MapUI(context = context,
+        c2MapUI(context = context,
             c2Pos = c2Loc,
             usvPos = usvLoc,
             mapProperties
         )
+
+        //c2MainScreen()
     }
     else{
         Text(text = "Loading map...")
