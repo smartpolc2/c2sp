@@ -19,3 +19,8 @@ class USVGps (
     var GpsFix: Int,
     var SatInView: Int
 )
+
+class USVData(
+    var gps: USVGps,
+    var pollution: Pollution
+)

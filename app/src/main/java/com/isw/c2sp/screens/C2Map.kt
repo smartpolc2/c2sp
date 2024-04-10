@@ -1,4 +1,4 @@
-package com.isw.c2sp.ui.theme
+package com.isw.c2sp.screens
 
 import android.content.Context
 import android.util.Log
@@ -17,9 +17,11 @@ import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,27 +38,29 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
+import com.google.gson.Gson
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
-import com.google.maps.android.compose.rememberCameraPositionState
-import com.google.gson.Gson
 import com.google.maps.android.compose.Polyline
+import com.google.maps.android.compose.rememberCameraPositionState
 import com.isw.c2sp.R
 import com.isw.c2sp.models.Pollution
 import com.isw.c2sp.models.USVGps
 import com.isw.c2sp.models.USVNode
+import com.isw.c2sp.utils.getUsvData
+import com.isw.c2sp.utils.getUsvGps
+import com.isw.c2sp.utils.getUsvPollution
 import com.isw.c2sp.utils.loadUSVPath
 import com.isw.c2sp.utils.saveUSVPath
+import com.isw.c2sp.utils.saveUsvData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import java.io.BufferedReader
-import java.io.FileOutputStream
 import java.io.InputStreamReader
 import java.net.URL
 import javax.net.ssl.HttpsURLConnection
@@ -77,7 +81,7 @@ fun c2MapUI(
     var isUSVPresent by remember { mutableStateOf(true) }
 
     //usv planned path
-    var usvPath = remember {
+    val usvPath = remember {
         mutableStateListOf(c2Pos)
         //mutableStateListOf(LatLng)
     }
@@ -85,16 +89,19 @@ fun c2MapUI(
     var clickedPoints by remember { mutableStateOf(listOf<LatLng>()) }
     var polyline by remember { mutableStateOf(emptyList<LatLng>()) }
 
-    var pathViewModel: PathOpVM = viewModel()
+    val pathViewModel: PathOpVM = viewModel()
 
     var c2OpMode by remember { mutableStateOf("") }
+    var isContinuousMonitoring by remember { mutableStateOf(false) }
 
     //detect USV presence
     LaunchedEffect(key1 = Unit) {
         while (true) {
             val result = withContext(Dispatchers.IO) {
-                val url = URL("https://a5043b0f-1c90-4975-9da3-1f297cac6676.mock.pstmn.io/api/polution/getGpsPar/")
+                val url =
+                    URL("https://a5043b0f-1c90-4975-9da3-1f297cac6676.mock.pstmn.io/api/polution/getGpsPar/")
                 val connection  = url.openConnection() as HttpsURLConnection
+                //val connection  = url.openConnection() as HttpURLConnection
 
                 if(connection.responseCode == 200)
                 {
@@ -104,7 +111,15 @@ fun c2MapUI(
 
                     markerData = LatLng(request.Latitude / 100, request.Longitude / 100)
                     markerData = generateNewPosition(markerData)
+                    pathViewModel.onNewPosition(receivedPos = markerData)
                     isUSVPresent = true
+
+                    if (isUSVPresent){
+                        if (isContinuousMonitoring){
+                            //continuous monitoring enabled
+                            getUsvData()
+                        }
+                    }
 
                     inputStreamReader.close()
                     inputSystem.close()
@@ -150,7 +165,7 @@ fun c2MapUI(
         }
 
         Column(){
-            c2MainMenu(context, "")
+            c2MainMenu(context, "", false)
 
             //operations with path
             if (usvPath.size > 1){
@@ -220,9 +235,12 @@ fun usvMarker(usvPos: LatLng){
 }
 
 @Composable
-fun c2MainMenu(context: Context, c2OPMode: String){
+fun c2MainMenu(context: Context, c2OPMode: String, contMonit: Boolean){
 
-    var c2OpMode by remember { mutableStateOf(c2OPMode) }
+    var locc2OpMode by remember { mutableStateOf(c2OPMode) }
+    var loccontMonit by remember {
+        mutableStateOf(contMonit)
+    }
 
     Column(){
         // Planning & Monitoring buttons
@@ -232,26 +250,38 @@ fun c2MainMenu(context: Context, c2OPMode: String){
                 .padding(horizontal = 4.dp, vertical = 4.dp)
         ){
             val dButton = 25.dp
-            FloatingActionButton(onClick = { c2OpMode = "planning" },
+            FloatingActionButton(onClick = { locc2OpMode = "planning" },
                 modifier = Modifier
                     .size(dButton, dButton)) {
                 androidx.compose.material3.Icon(Icons.Default.Build, contentDescription = "Planning")
             }
-            FloatingActionButton(onClick = { c2OpMode = "monitoring" },
+            FloatingActionButton(onClick = { locc2OpMode = "monitoring" },
                 modifier = Modifier
                     .size(dButton, dButton)) {
                 androidx.compose.material3.Icon(Icons.Default.Place, contentDescription = "Monitoring")
             }
 
+            //Video
+            FloatingActionButton(onClick = { locc2OpMode = "video" },
+                modifier = Modifier
+                    .size(dButton, dButton)) {
+                androidx.compose.material3.Icon(Icons.Default.PlayArrow, contentDescription = "Video")
+            }
+
             Spacer(modifier = Modifier.size(50.dp))
 
+            Log.i("c2OpMode",   c2OPMode)
             //display available operations depending on c2 modes
-            if (c2OpMode == "planning"){
+            if (locc2OpMode == "planning"){
                 showPlanningMenu(context)
             }
 
-            if (c2OpMode == "monitoring"){
+            if (locc2OpMode == "monitoring"){
                 showMonitoringMenu(context)
+            }
+
+            if (locc2OpMode == "video"){
+                showVideoMenu(context)
             }
         }
     }
@@ -265,7 +295,7 @@ fun displayUsvPlannedPath(usvPath: List<LatLng>){
 @Composable
 fun pollutionUI(){
 
-    val viewModel: pollutionVM = viewModel()
+    val viewModel: PollutionVM = viewModel()
 
     Column(
         modifier = Modifier
@@ -277,6 +307,23 @@ fun pollutionUI(){
         }){
             Text("Pollution tmp= ${viewModel.temperature} pH= ${viewModel.pH} ORP=${viewModel.orp}")
         }
+        Row(){
+            //continuous monitoring
+            val checkedState = remember { mutableStateOf(false) }
+            Switch(
+                checked = checkedState.value,
+                onCheckedChange = {
+                    checkedState.value = it
+                    //continuos DAQ from usv
+                    if(it){
+                        viewModel.onContinuousMonitoring()
+                    }
+
+                }
+            )
+            Text("continuous DAQ")
+        }
+
     }
 }
 
@@ -289,6 +336,9 @@ class PathOpVM: androidx.lifecycle.ViewModel(){
 
     private var _usvPath = mutableStateListOf<LatLng>()
     var usvPath: List<LatLng> = _usvPath
+
+    var usvRTPos = mutableStateListOf<LatLng>()
+        private set
 
     fun onOpenButtonClick(context: Context){
         viewModelScope.launch {
@@ -342,9 +392,14 @@ class PathOpVM: androidx.lifecycle.ViewModel(){
         //usvPath.toMutableList().apply { clear() }
         _usvPath.clear()
     }
+
+    fun onNewPosition(receivedPos: LatLng){
+        usvRTPos.add(receivedPos)
+        Log.i("onNewPosition", "received Position ${receivedPos}")
+    }
 }
 
-class pollutionVM : androidx.lifecycle.ViewModel(){
+class PollutionVM : androidx.lifecycle.ViewModel(){
     var pressure: Double by androidx.compose.runtime.mutableDoubleStateOf(0.0)
         private set
     var temperature: Double by androidx.compose.runtime.mutableDoubleStateOf(0.0)
@@ -358,27 +413,23 @@ class pollutionVM : androidx.lifecycle.ViewModel(){
         // Use a coroutine to perform the web service call
         viewModelScope.launch {
             val result = withContext(Dispatchers.IO) {
-
-                val url =
-                    URL("https://a5043b0f-1c90-4975-9da3-1f297cac6676.mock.pstmn.io/api/polution/getPolPar/")
-                val connection = url.openConnection() as HttpsURLConnection
-
-                if (connection.responseCode == 200) {
-                    val inputSystem = connection.inputStream
-                    val inputStreamReader = InputStreamReader(inputSystem, "UTF-8")
-                    val request = Gson().fromJson(inputStreamReader, Pollution::class.java)
-
-                    handleUSVPollutionResult(request)
-
-                    inputStreamReader.close()
-                    inputSystem.close()
-                } else {
-                    //binding.baseCurrency.text = "Failed Connection"
+                try{
+                    val pollution = getUsvPollution()
+                    handleUSVPollutionResult(pollution)
+                    var gps = getUsvGps()
+                    saveUsvData(gps, pollution)
+                } catch(e: Exception){
+                    Log.e("Pollution onButtonClick", "getUsvPollution exception")
                 }
             }
+        }
+    }
 
-            // Update the state based on the web service result
-            //handleWebServiceResult(result)
+    fun onContinuousMonitoring() {
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                getUsvData()
+            }
         }
     }
 
@@ -387,7 +438,6 @@ class pollutionVM : androidx.lifecycle.ViewModel(){
         temperature = pollution.TempCx100.toDouble() / 100
         pH = pollution.pHx100.toDouble() / 100
         orp = pollution.ORPmVx10.toDouble() / 10
-
     }
 }
 
@@ -413,29 +463,59 @@ fun showPlanningMenu(context: Context){
 @Composable
 fun showMonitoringMenu(context: Context){
     val dButton = 25.dp
-    Column(){
-        FloatingActionButton(onClick = {  },
-            modifier = Modifier
-                .size(dButton, dButton)) {
-            androidx.compose.material3.Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Forward")
-        }
-        Row() {
+    Row {
+        // Remote control
+        Column(){
             FloatingActionButton(onClick = {  },
                 modifier = Modifier
                     .size(dButton, dButton)) {
-                androidx.compose.material3.Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Left")
+                androidx.compose.material3.Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Forward")
+            }
+            Row() {
+                FloatingActionButton(onClick = {  },
+                    modifier = Modifier
+                        .size(dButton, dButton)) {
+                    androidx.compose.material3.Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Left")
+                }
+                FloatingActionButton(onClick = {  },
+                    modifier = Modifier
+                        .size(dButton, dButton)) {
+                    androidx.compose.material3.Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Right")
+                }
             }
             FloatingActionButton(onClick = {  },
                 modifier = Modifier
                     .size(dButton, dButton)) {
-                androidx.compose.material3.Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Right")
+                androidx.compose.material3.Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Backward")
             }
         }
-        FloatingActionButton(onClick = {  },
-            modifier = Modifier
-                .size(dButton, dButton)) {
-            androidx.compose.material3.Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Backward")
-        }
+
+        // Get pollution data
+        pollutionUI()
     }
+
+}
+
+@Composable
+fun showVideoMenu(context: Context){
+    val config = StreamConfig("sample",
+        "10.2.5.57",
+        8554,
+        "mystream",
+        "",
+        "",
+        false)
+
+    /*
+    val config = StreamConfig(getString(R.string.streamName),
+        getString(R.string.rtspServer),
+        getString(R.string.rtspPort),
+        getString(R.string.rtspPath),
+        getString(R.string.rtspUser),
+        getString( R.string.rtspPassword),
+        false)
+
+     */
+    VideoPlayer(config = config)
 }
 

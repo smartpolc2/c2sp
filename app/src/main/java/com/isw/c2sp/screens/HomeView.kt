@@ -1,8 +1,7 @@
-package com.isw.c2sp.ui.theme
+package com.isw.c2sp.screens
 
 import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
-import androidx.lifecycle.ViewModel
 import com.google.android.gms.maps.model.LatLng
 import kotlin.random.Random
 

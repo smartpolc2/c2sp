@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">c2sp</string>
+    <string name="rtspServer">10.2.5.57</string>
+    <string name="streamName">usv</string>
+    <string name="rtspPort">8554</string>
+    <string name="rtspPath">mystream</string>
+    <string name="rtspPassword"></string>
+    <string name="rtspUser"></string>
 </resources>

@@ -1,4 +1,4 @@
-package com.isw.c2sp.ui.theme
+package com.isw.c2sp.screens
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -47,7 +47,7 @@ fun DrawPolyline(polyline: List<LatLng>, color: Color) {
             width = 5f, // Adjust width
             clickable = false // Disable clicks on the polyline itself
         )
-        polyline.forEach(){
+        polyline.forEach{
             Marker(
                 state = MarkerState(position = it),
                 title = "Location",

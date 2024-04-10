@@ -1,4 +1,4 @@
-package com.isw.c2sp.ui.theme
+package com.isw.c2sp.screens
 
 import android.content.Context
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,7 +18,7 @@ import com.isw.c2sp.utils.getCurrentLocation
 import com.isw.c2sp.utils.simUsvPos
 
 @Composable
-fun C2UI(context: Context){
+fun C2Screen(context: Context){
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background

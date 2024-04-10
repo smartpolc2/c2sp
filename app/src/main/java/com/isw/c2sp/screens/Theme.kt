@@ -1,4 +1,4 @@
-package com.isw.c2sp.ui.theme
+package com.isw.c2sp.screens
 
 import android.app.Activity
 import android.os.Build

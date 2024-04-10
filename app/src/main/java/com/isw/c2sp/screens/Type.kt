@@ -1,4 +1,4 @@
-package com.isw.c2sp.ui.theme
+package com.isw.c2sp.screens
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
