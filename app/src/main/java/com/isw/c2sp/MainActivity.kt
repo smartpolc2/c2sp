@@ -7,10 +7,13 @@ import androidx.activity.compose.setContent
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
+import com.isw.c2sp.screens.C2MainScreen
 import com.isw.c2sp.screens.C2Screen
+import com.isw.c2sp.utils.getUsvGps
 //import com.isw.c2sp.ui.theme.C2UI
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
 
 class MainActivity : ComponentActivity() {
     private var coroutineScope: CoroutineScope? = null
@@ -41,7 +44,8 @@ class MainActivity : ComponentActivity() {
             }
 
         setContent {
-            C2Screen(this)
+            //C2Screen(this)
+            C2MainScreen(this)
         }
     }
 

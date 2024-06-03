@@ -48,11 +48,11 @@ fun getUsvGps():USVGps{
         val inputStreamReader = InputStreamReader(inputSystem, "UTF-8")
         val request = Gson().fromJson(inputStreamReader, USVGps::class.java)
 
-        // somethig upon request
-        return request
-
         inputStreamReader.close()
         inputSystem.close()
+
+        // somethig upon request
+        return request
     }
     else
     {

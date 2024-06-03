@@ -161,7 +161,7 @@ fun c2MapUI(
 
             // Planned path
             Log.i("GoogleMap Recompose","${polyline.size}")
-            DrawPolyline(polyline)
+            //DrawPolyline(polyline)
         }
 
         Column(){
