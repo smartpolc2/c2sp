@@ -26,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,9 +50,11 @@ import com.isw.c2sp.R
 import com.isw.c2sp.models.Pollution
 import com.isw.c2sp.models.USVGps
 import com.isw.c2sp.models.USVNode
+import com.isw.c2sp.models.WeatherData
 import com.isw.c2sp.utils.getUsvData
 import com.isw.c2sp.utils.getUsvGps
 import com.isw.c2sp.utils.getUsvPollution
+import com.isw.c2sp.utils.getWeather
 import com.isw.c2sp.utils.loadUSVPath
 import com.isw.c2sp.utils.saveUSVPath
 import com.isw.c2sp.utils.saveUsvData
@@ -64,6 +67,7 @@ import kotlinx.serialization.json.Json
 import java.io.InputStreamReader
 import java.net.URL
 import javax.net.ssl.HttpsURLConnection
+import kotlin.random.Random
 
 @Composable
 fun c2MapUI(
@@ -111,13 +115,13 @@ fun c2MapUI(
 
                     markerData = LatLng(request.Latitude / 100, request.Longitude / 100)
                     markerData = generateNewPosition(markerData)
-                    pathViewModel.onNewPosition(receivedPos = markerData)
+                    pathViewModel.onNewReceivedPosition(receivedPos = markerData)
                     isUSVPresent = true
 
                     if (isUSVPresent){
                         if (isContinuousMonitoring){
                             //continuous monitoring enabled
-                            getUsvData()
+                            getUsvData(context)
                         }
                     }
 
@@ -293,7 +297,7 @@ fun displayUsvPlannedPath(usvPath: List<LatLng>){
 }
 
 @Composable
-fun pollutionUI(){
+fun pollutionUI(context: Context){
 
     val viewModel: PollutionVM = viewModel()
 
@@ -303,7 +307,8 @@ fun pollutionUI(){
             .padding(horizontal = 4.dp, vertical = 4.dp)
     ){
         Button(onClick = {
-            viewModel.onButtonClick()
+            //viewModel.onButtonClick_Pollution(context)
+            viewModel.onButtonClick_Weather(context)
         }){
             Text("Pollution tmp= ${viewModel.temperature} pH= ${viewModel.pH} ORP=${viewModel.orp}")
         }
@@ -316,7 +321,7 @@ fun pollutionUI(){
                     checkedState.value = it
                     //continuos DAQ from usv
                     if(it){
-                        viewModel.onContinuousMonitoring()
+                        viewModel.onContinuousMonitoring(context)
                     }
 
                 }
@@ -351,7 +356,7 @@ class PathOpVM: androidx.lifecycle.ViewModel(){
                 val obj = Json.decodeFromString<List<USVNode>>(json)
                 obj.forEach {
                     //usvPath.add(USVNode(it.latitude, it.longitude))
-                    usvPath.toMutableList().apply { add(LatLng(it.Latitude, it.Longitude)) }
+                    usvPath.toMutableList().apply { add(LatLng(it.latitude, it.longitude)) }
                 }
                 Log.i("Open plan", "loading default usv path succesfully")
             }
@@ -385,7 +390,9 @@ class PathOpVM: androidx.lifecycle.ViewModel(){
     fun onMapClick(clickPoint: LatLng){
         //usvPath.toMutableList().apply { add(clickPoint) }
         _usvPath.add(clickPoint)
-        Log.i("onMapClick", "clickPoint ${clickPoint}")
+        Log.i("PathOpVM.onMapClick", "clickPoint ${clickPoint}")
+        Log.i("PathOpVM.onMapClick", "clicks size =" + _usvPath.size.toString())
+        Log.i("PathOpVM.onMapClick", "clicks size =" + usvPath.size.toString())
     }
 
     fun onClearButton() {
@@ -393,9 +400,30 @@ class PathOpVM: androidx.lifecycle.ViewModel(){
         _usvPath.clear()
     }
 
-    fun onNewPosition(receivedPos: LatLng){
+    fun onNewReceivedPosition(receivedPos: LatLng){
         usvRTPos.add(receivedPos)
-        Log.i("onNewPosition", "received Position ${receivedPos}")
+        Log.i("PathOpVM.onNewReceivedPosition", "received Position ${receivedPos}")
+        Log.i("PathOpVM.onNewReceivedPosition", "size positions = " + usvRTPos.size.toString())
+    }
+
+    fun resetPlanning(){
+        _usvPath.clear()
+    }
+
+    fun resetTracking(){
+        usvRTPos.clear()
+    }
+}
+
+class SomeDataVM: androidx.lifecycle.ViewModel(){
+    private val _elements = mutableStateListOf<LatLng>()
+    val elements: List<LatLng> = _elements
+
+    fun addElement(){
+        val randomNumber1 = Random.nextDouble(from = 40.00, until = 45.00)
+        val randomNumber2 = Random.nextDouble(from = 25.00, until = 27.00)
+        _elements.add(LatLng(randomNumber1, randomNumber2))
+        Log.d("SomeDataVM.addElement", "Added number = ${_elements.last()}")
     }
 }
 
@@ -409,14 +437,17 @@ class PollutionVM : androidx.lifecycle.ViewModel(){
     var orp: Double by androidx.compose.runtime.mutableDoubleStateOf(0.0)
         private set
 
-    fun onButtonClick() {
+    var temp: Double by mutableDoubleStateOf(0.0)
+        private set
+
+    fun onButtonClick_Pollution(context: Context) {
         // Use a coroutine to perform the web service call
         viewModelScope.launch {
             val result = withContext(Dispatchers.IO) {
                 try{
-                    val pollution = getUsvPollution()
+                    val pollution = getUsvPollution(context)
                     handleUSVPollutionResult(pollution)
-                    var gps = getUsvGps()
+                    var gps = getUsvGps(context)
                     saveUsvData(gps, pollution)
                 } catch(e: Exception){
                     Log.e("Pollution onButtonClick", "getUsvPollution exception")
@@ -425,10 +456,24 @@ class PollutionVM : androidx.lifecycle.ViewModel(){
         }
     }
 
-    fun onContinuousMonitoring() {
+    fun onButtonClick_Weather(context: Context){
+        // Use a coroutine to perform the web service call
         viewModelScope.launch {
             val result = withContext(Dispatchers.IO) {
-                getUsvData()
+                try{
+                    val weather = getWeather(context)
+                    handleWeatherResult(weather)
+                } catch(e: Exception){
+                    Log.e("Weather onButtonClick", "getWeather exception")
+                }
+            }
+        }
+    }
+
+    fun onContinuousMonitoring(context: Context) {
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                getUsvData(context)
             }
         }
     }
@@ -439,7 +484,13 @@ class PollutionVM : androidx.lifecycle.ViewModel(){
         pH = pollution.pHx100.toDouble() / 100
         orp = pollution.ORPmVx10.toDouble() / 10
     }
+
+    private fun handleWeatherResult(weatherData: WeatherData){
+        val temp = weatherData.hourly.temperature_2m[10]
+        Log.i("handleWeatherResult", "received temperature = " + temp)
+    }
 }
+
 
 @Composable
 fun showPlanningMenu(context: Context){
@@ -491,17 +542,17 @@ fun showMonitoringMenu(context: Context){
         }
 
         // Get pollution data
-        pollutionUI()
+        pollutionUI(context)
     }
 
 }
 
 @Composable
 fun showVideoMenu(context: Context){
-    val config = StreamConfig("sample",
-        "10.2.5.57",
+    val config = StreamConfig("default",
+        "10.2.5.99",
         8554,
-        "mystream",
+        "usv",
         "",
         "",
         false)

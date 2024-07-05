@@ -9,8 +9,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.twotone.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.twotone.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -29,8 +29,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat.getString
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
@@ -38,6 +40,7 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.isw.c2sp.R
 import com.isw.c2sp.utils.getUsvGps
@@ -48,21 +51,65 @@ import kotlinx.coroutines.withContext
 
 @Composable
 fun MenuComposable(
-    dynamicMenu: @Composable () -> Unit
+    dynamicMenu: @Composable (context: Context) -> Unit
 ) {
-    dynamicMenu()
+    val context = LocalContext.current
+    dynamicMenu(context)
 }
 
-@Preview
 @Composable
-fun NoMenu(){}
+fun ContentComposable(
+    trackPlanned: List<LatLng>,
+    trackReal: List<LatLng>,
+    dynamicContent: @Composable (trackPlanned: List<LatLng>, trackReal: List<LatLng>) -> Unit
+){
+    dynamicContent(
+        trackPlanned,
+        trackReal
+    )
+}
+
+//@Preview
+@Composable
+fun NoMenu(context: Context){}
+
+@Composable
+fun NoContent(trackPlanned: List<LatLng>, trackReal: List<LatLng>){
+    /*
+    trackPlanned.forEach{
+        Polyline(points = trackPlanned,
+            clickable = true,
+            color = Color.Red,
+            width = 5f
+        )
+    }
+
+    trackReal.forEach {
+        Polyline(points = trackReal,
+            clickable = true,
+            color = Color.Green,
+            width = 5f
+        )
+    }
+
+     */
+}
+
+@Composable
+fun DisplayTrack(trackPlanned: List<LatLng>, trackReal: List<LatLng>){
+    Polyline(points = trackPlanned,
+        clickable = true,
+        color = Color.Red,
+        width = 5f
+    )
+}
 
 
-@Preview
+//@Preview
 @Composable
-fun PlanningMenu(){
+fun PlanningMenu(context: Context){
     val viewModel: PathOpVM = viewModel()
-    Row(){
+    Row{
         Button(onClick = {
             //viewModel.onOpenButtonClick(context)
         }){
@@ -76,52 +123,96 @@ fun PlanningMenu(){
     }
 }
 
-@Preview
 @Composable
-fun MonitoringMenu(){
+fun PlanningContent(trackPlanned: List<LatLng>, trackReal: List<LatLng>){
+    trackPlanned.forEach{
+        Polyline(points = trackPlanned,
+            clickable = true,
+            color = Color.Red,
+            width = 5f
+        )
+    }
+
+    /*
+    trackReal.forEach {
+        Polyline(points = trackReal,
+            clickable = true,
+            color = Color.Green,
+            width = 5f
+        )
+    }
+     */
+}
+
+@Composable
+fun MonitoringContent(trackPlanned: List<LatLng>, trackReal: List<LatLng>){
+    /*
+    trackPlanned.forEach{
+        Polyline(points = trackPlanned,
+            clickable = true,
+            color = Color.Red,
+            width = 5f
+        )
+    }
+     */
+
+    trackReal.forEach {
+        Polyline(points = trackReal,
+            clickable = true,
+            color = Color.Green,
+            width = 5f
+        )
+    }
+}
+
+
+//@Preview
+@Composable
+fun MonitoringMenu(context: Context){
     val dButton = 50.dp
     Row {
         // Remote control
-        Column(){
+        Column{
             FloatingActionButton(onClick = {  },
                 modifier = Modifier
                     .size(dButton, dButton)) {
-                androidx.compose.material3.Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Forward")
+                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Forward")
             }
-            Row() {
+            Row {
                 FloatingActionButton(onClick = {  },
                     modifier = Modifier
                         .size(dButton, dButton)) {
-                    androidx.compose.material3.Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Left")
+                    Icon(Icons.AutoMirrored.TwoTone.KeyboardArrowLeft, contentDescription = "Left")
                 }
                 FloatingActionButton(onClick = {  },
                     modifier = Modifier
                         .size(dButton, dButton)) {
-                    androidx.compose.material3.Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Right")
+                    Icon(Icons.AutoMirrored.TwoTone.KeyboardArrowRight, contentDescription = "Right")
                 }
             }
             FloatingActionButton(onClick = {  },
                 modifier = Modifier
                     .size(dButton, dButton)) {
-                androidx.compose.material3.Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Backward")
+                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Backward")
             }
         }
 
         // Get pollution data
-        pollutionUI()
+        // send context for webservice call
+        pollutionUI(context)
     }
 }
 
-@Preview
+//@Preview
 @Composable
-fun VideoMenu(){
-    val config = StreamConfig("sample",
+fun VideoMenu(context: Context){
+    val config = StreamConfig("usv",
         "10.2.5.57",
         8554,
-        "mystream",
+        "mihai",
         "",
         "",
-        false)
+        true)
 
     /*
     val config = StreamConfig(getString(R.string.streamName),
@@ -133,21 +224,53 @@ fun VideoMenu(){
         false)
 
      */
-    VideoPlayer(config = config)
+    //VideoPlayer(config = config)
+    VidePlayerSimple(config = config)
 }
 
 @Composable
 fun C2MainScreen(context: Context){
 
-    var c2Marker by remember{
-        mutableStateOf(LatLng(44.426395, 26.0986619))
+    val c2Marker by remember{
+        mutableStateOf(LatLng(44.449762, 26.041717))
     }
     val cameraPositionState = rememberCameraPositionState{
         position = CameraPosition.fromLatLngZoom(c2Marker, 15f)
     }
     //var usvMarker = generateNewPosition(c2Marker)
     var usvMarker by remember{
-        mutableStateOf(LatLng(44.426395, 26.0986619))
+        mutableStateOf(LatLng(44.449762, 26.041717))
+    }
+    var aisMarker by remember{
+        mutableStateOf(LatLng(44.449762, 26.041717))
+    }
+
+    val pathViewModel: PathOpVM = viewModel()
+    val usvPath = pathViewModel.usvPath
+    val usvRTPos = pathViewModel.usvRTPos
+
+    val usvLastPosLog = getString(context, R.string.usvLastPosLog).toInt()
+    var realTrack by remember { mutableStateOf(emptyList<LatLng>()) }
+
+    //usv planned path
+    /*
+    var usvPath = remember {
+        mutableStateListOf(LatLng(44.449762, 26.041717))
+    }
+    var clickedPoints by remember { mutableStateOf(emptyList<LatLng>()) }
+    //var polyline by remember { mutableStateOf(emptyList<LatLng>()) }
+
+     */
+
+    var dynamicMenu by remember {
+        mutableStateOf<@Composable () -> Unit>({ NoMenu(context) })
+    }
+    var dynamicContent by remember {
+        mutableStateOf<@Composable (List<LatLng>, List<LatLng>) -> Unit>({usvPath, usvRTPos ->
+            NoContent(
+                trackPlanned = usvPath,
+                trackReal = usvRTPos)
+        })
     }
 
     LaunchedEffect(key1 = Unit) {
@@ -155,8 +278,19 @@ fun C2MainScreen(context: Context){
             val result = withContext(Dispatchers.IO){
                 // detect usv presence
                 try {
-                    val knownUSVPos = getUsvGps()
-                    usvMarker = generateNewPosition(usvMarker)
+                    val knownUSVPos = getUsvGps(context)
+
+                    usvMarker = generateNewPosition(LatLng(knownUSVPos.Latitude, knownUSVPos.Longitude))
+                    pathViewModel.onNewReceivedPosition(receivedPos = usvMarker)
+                    /*
+                    realTrack = realTrack.toMutableList().apply { add(usvMarker) }
+                    if (realTrack.size > usvLastPosLog){
+                        realTrack = realTrack.toMutableList().apply { removeFirst() }
+                    }
+
+                     */
+
+                    //aisMarker = generateNewPosition(usvMarker)
 
                     Log.i("usvMarker", usvMarker.toString())
                 } catch (e: Exception) {
@@ -174,7 +308,19 @@ fun C2MainScreen(context: Context){
         color = MaterialTheme.colorScheme.background
     ){
         Box {
-            GoogleMap(){
+            GoogleMap(
+                cameraPositionState = cameraPositionState,
+                onMapClick = {
+                    clickPoint ->
+                    /*
+                        usvPath.add(clickPoint)
+                    clickedPoints = clickedPoints.toMutableList().apply { add(clickPoint) }
+
+                     */
+                    pathViewModel.onMapClick(clickPoint = clickPoint)
+                    //Log.i("GoogleMap", "clicked point = " + clickedPoints.size.toString())
+                }
+            ){
                 Marker(
                     state = MarkerState(c2Marker),
                     title = "C2",
@@ -188,14 +334,41 @@ fun C2MainScreen(context: Context){
                     snippet = "(${usvMarker.latitude},${usvMarker.longitude})",
                     icon = BitmapDescriptorFactory.fromResource(R.mipmap.usv)
                 )
+
+                Marker(
+                    state = MarkerState(aisMarker),
+                    title = "AIS",
+                    snippet = "(${aisMarker.latitude},${aisMarker.longitude})",
+                    icon = BitmapDescriptorFactory.fromResource(R.mipmap.usv)
+                )
+
+                ContentComposable(trackPlanned = usvPath,
+                    trackReal = usvRTPos,
+                    dynamicContent = dynamicContent
+                )
+
+                /*
+                usvPath.forEach{
+                    Polyline(points = usvPath,
+                        color = Color.Blue)
+                }
+
+                usvRTPos.forEach{
+                    Polyline(points = usvRTPos,
+                        color = Color.Green)
+                }
+                 */
             }
 
-            var dynamicMenu by remember {
-                mutableStateOf<@Composable () -> Unit>({ NoMenu() })
-            }
-
-            Row(){
-                FloatingActionButton(onClick = {dynamicMenu = { PlanningMenu() } },
+            Row{
+                FloatingActionButton(onClick = {
+                    dynamicMenu = { PlanningMenu(context) }
+                    //clickedPoints = clickedPoints.toMutableList().apply { clear() }
+                    dynamicContent = { usvPath, usvRTPos ->
+                        PlanningContent(trackPlanned = usvPath, trackReal = usvRTPos)
+                    }
+                    pathViewModel.resetPlanning()
+                   },
                     modifier = Modifier
                         .size(30.dp, 30.dp))
                 {
@@ -204,7 +377,14 @@ fun C2MainScreen(context: Context){
                         contentDescription = "Planning"
                     )
                 }
-                FloatingActionButton(onClick = {dynamicMenu = { MonitoringMenu() } },
+                FloatingActionButton(onClick = {
+                    dynamicMenu = { MonitoringMenu(context) }
+                    dynamicContent = { usvPath, usvRTPos ->
+                        MonitoringContent(trackPlanned = usvPath, trackReal = usvRTPos)
+                    }
+                    pathViewModel.resetPlanning()
+                    pathViewModel.resetTracking()
+                   },
                     modifier = Modifier
                         .size(30.dp, 30.dp))
                 {
@@ -213,7 +393,7 @@ fun C2MainScreen(context: Context){
                         contentDescription = "Monitoring"
                     )
                 }
-                FloatingActionButton(onClick = {dynamicMenu = { VideoMenu() } },
+                FloatingActionButton(onClick = {dynamicMenu = { VideoMenu(context) } },
                     modifier = Modifier
                         .size(30.dp, 30.dp))
                 {
@@ -222,6 +402,22 @@ fun C2MainScreen(context: Context){
                         contentDescription = "Video"
                     )
                 }
+
+                /*
+                Column{
+                    Button(onClick = {
+                        //something
+                        someDataViewModel.addElement()
+                    }){
+                        Text(text = "apasa")
+                    }
+                    elements.forEach {
+                        Text(
+                            text = "Number $it"
+                        )
+                    }
+                }
+                 */
 
                 MenuComposable {
                     dynamicMenu()

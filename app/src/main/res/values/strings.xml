@@ -1,9 +1,12 @@
 <resources>
     <string name="app_name">c2sp</string>
-    <string name="rtspServer">10.2.5.57</string>
+    <string name="rtspServer">10.2.5.99</string>
     <string name="streamName">usv</string>
     <string name="rtspPort">8554</string>
-    <string name="rtspPath">mystream</string>
+    <string name="rtspPath">usv</string>
     <string name="rtspPassword"></string>
     <string name="rtspUser"></string>
+    <string name="gps">http://10.2.5.99:8080/gps</string>
+    <string name="pollution">http://10.2.5.99:8080/pollution</string>
+    <string name="usvLastPosLog">10</string>
 </resources>

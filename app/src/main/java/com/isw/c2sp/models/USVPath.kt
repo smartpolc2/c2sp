@@ -4,6 +4,6 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class USVNode (
-    var Latitude: Double,
-    var Longitude: Double
+    var latitude: Double,
+    var longitude: Double
 )

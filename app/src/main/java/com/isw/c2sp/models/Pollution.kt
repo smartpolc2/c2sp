@@ -24,3 +24,22 @@ class USVData(
     var gps: USVGps,
     var pollution: Pollution
 )
+
+class hUnits(
+    var time: String,
+    var temperature_2m: String
+)
+class hDataArray(
+    var time: ArrayList<String>,
+    var temperature_2m: ArrayList<Double>
+)
+class WeatherData(
+    var latitude: Double,
+    var longitude: Double,
+    var generationtime_ms: Double,
+    var timezone: String,
+    var timezone_abbreviation: String,
+    var elevation: Double,
+    var hourly_units: hUnits,
+    var hourly: hDataArray
+)
