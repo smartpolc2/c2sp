@@ -140,8 +140,8 @@ fun VidePlayerSimple(config:StreamConfig){
 
     val exoPlayer = ExoPlayer.Builder(context).build()
 
-    /*
     // Create a MediaSource
+    /*
     val mediaSource = remember(EXAMPLE_VIDEO_URI) {
         MediaItem.fromUri(EXAMPLE_VIDEO_URI)
     }
@@ -152,7 +152,6 @@ fun VidePlayerSimple(config:StreamConfig){
         RtspMediaSource.Factory()
             .setForceUseRtpTcp(config.forceRtpTcp)
             .createMediaSource(MediaItem.fromUri(config.toString()))
-
 
     // Set MediaSource to ExoPlayer
     LaunchedEffect(mediaSource) {

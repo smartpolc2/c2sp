@@ -210,12 +210,12 @@ fun MonitoringMenu(context: Context){
 @Composable
 fun VideoMenu(context: Context){
     val config = StreamConfig("usv",
-        "10.2.5.57",
+        "192.168.3.34",
         8554,
-        "mihai",
+        "usv",
         "",
         "",
-        true)
+        false)
 
     /*
     val config = StreamConfig(getString(R.string.streamName),
@@ -227,8 +227,20 @@ fun VideoMenu(context: Context){
         false)
 
      */
-    //VideoPlayer(config = config)
-    VidePlayerSimple(config = config)
+
+    Column{
+        var videoSource by remember { mutableStateOf(config.toString()) }
+
+        TextField(
+            value = videoSource,
+            onValueChange = { videoSource = it },
+            label = { Text("RTSP source") }
+        )
+
+        //VideoPlayer(config = config)
+        VidePlayerSimple(config = config)
+    }
+
 }
 fun saveAddress(context: Context, key: String, address: String) {
     val sharedPreferences = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
