@@ -25,6 +25,13 @@ class USVData(
     var pollution: Pollution
 )
 
+class USVCommand(
+    var Forward: Double,
+    var Backward: Double,
+    var Left: Double,
+    var Right: Double
+)
+
 class hUnits(
     var time: String,
     var temperature_2m: String

@@ -8,9 +8,11 @@ import com.google.firebase.database.database
 import com.google.gson.Gson
 import com.isw.c2sp.R
 import com.isw.c2sp.models.Pollution
+import com.isw.c2sp.models.USVCommand
 import com.isw.c2sp.models.USVData
 import com.isw.c2sp.models.USVGps
 import com.isw.c2sp.models.WeatherData
+import com.isw.c2sp.screens.loadAddress
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
@@ -20,7 +22,10 @@ import javax.net.ssl.HttpsURLConnection
 
 fun getUsvPollution(context: Context):Pollution{
     //val result = withContext(Dispatchers.IO) {
-        val wspath = getString(context, R.string.pollution)
+    //val wspath = getString(context, R.string.pollution)
+    val wspath = "http://" +
+            loadAddress(context, "usvSimAddress", "127.0.0.1:8080") +
+            "/getPolPar/"
         val url =
             //URL("https://a5043b0f-1c90-4975-9da3-1f297cac6676.mock.pstmn.io/api/polution/getPolPar/")
             //URL("http://10.2.5.99:8080/pollution")
@@ -47,7 +52,11 @@ fun getUsvPollution(context: Context):Pollution{
 }
 
 fun getUsvGps(context: Context):USVGps{
-    val wspath = getString(context, R.string.gps)
+    //val wspath = getString(context, R.string.gps)
+    val wspath = "http://" +
+            loadAddress(context, "usvSimAddress", "127.0.0.1:8080")+
+            "/getGpsPar/"
+    Log.i("getUsvGps - usvSimAddress", wspath)
     val url =
         //URL("https://a5043b0f-1c90-4975-9da3-1f297cac6676.mock.pstmn.io/api/polution/getGpsPar/")
         //URL("http://10.2.5.99:8080/gps")
@@ -128,6 +137,35 @@ fun saveUsvData(gps: USVGps, pollution: Pollution){
         myRef.setValue(usvData)
     } catch(e: Exception){
         Log.e("saveUsvData", "Firebase saving exception")
+    }
+
+}
+
+fun putUsvRCCommand(context: Context):USVCommand{
+    val wspath = loadAddress(context, "usvSimAddress", "127.0.0.1:8080") +
+            "/go"
+    val url =
+        URL(wspath)
+    //val connection  = url.openConnection() as HttpsURLConnection
+    val connection  = url.openConnection() as HttpURLConnection
+
+    if(connection.responseCode == 200)
+    {
+        val inputSystem = connection.inputStream
+        val inputStreamReader = InputStreamReader(inputSystem, "UTF-8")
+        val request = Gson().fromJson(inputStreamReader, USVCommand::class.java)
+
+        inputStreamReader.close()
+        inputSystem.close()
+
+        // somethig upon request
+        return request
+    }
+    else
+    {
+        // failed connection
+        Log.e("putUsvRCCommand", "Usv API not available")
+        throw Exception("Usv API not available")
     }
 
 }

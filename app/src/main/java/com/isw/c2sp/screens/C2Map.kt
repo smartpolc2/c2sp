@@ -56,6 +56,7 @@ import com.isw.c2sp.utils.getUsvGps
 import com.isw.c2sp.utils.getUsvPollution
 import com.isw.c2sp.utils.getWeather
 import com.isw.c2sp.utils.loadUSVPath
+import com.isw.c2sp.utils.putUsvRCCommand
 import com.isw.c2sp.utils.saveUSVPath
 import com.isw.c2sp.utils.saveUsvData
 import kotlinx.coroutines.Dispatchers
@@ -102,8 +103,10 @@ fun c2MapUI(
     LaunchedEffect(key1 = Unit) {
         while (true) {
             val result = withContext(Dispatchers.IO) {
+                val usvAddress = "https://" + loadAddress(context, "usvSimAddress", "127.0.0.1:8080") + "gps"
                 val url =
-                    URL("https://a5043b0f-1c90-4975-9da3-1f297cac6676.mock.pstmn.io/api/polution/getGpsPar/")
+                    //URL("https://a5043b0f-1c90-4975-9da3-1f297cac6676.mock.pstmn.io/api/polution/getGpsPar/")
+                    URL(usvAddress)
                 val connection  = url.openConnection() as HttpsURLConnection
                 //val connection  = url.openConnection() as HttpURLConnection
 
@@ -307,8 +310,8 @@ fun pollutionUI(context: Context){
             .padding(horizontal = 4.dp, vertical = 4.dp)
     ){
         Button(onClick = {
-            //viewModel.onButtonClick_Pollution(context)
-            viewModel.onButtonClick_Weather(context)
+            viewModel.onButtonClick_Pollution(context)
+            //viewModel.onButtonClick_Weather(context)
         }){
             Text("Pollution tmp= ${viewModel.temperature} pH= ${viewModel.pH} ORP=${viewModel.orp}")
         }
@@ -412,6 +415,26 @@ class PathOpVM: androidx.lifecycle.ViewModel(){
 
     fun resetTracking(){
         usvRTPos.clear()
+    }
+
+    fun onRemoteCommand(context: Context){
+        // Use a coroutine to perform the web service call
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                try{
+                    val usvCommand =  putUsvRCCommand(context)
+                    /*
+                    val pollution = getUsvPollution(context)
+                    handleUSVPollutionResult(pollution)
+                    var gps = getUsvGps(context)
+                    saveUsvData(gps, pollution)
+
+                     */
+                } catch(e: Exception){
+                    Log.e("RC onRemoteCommand", "putRCCommand exception")
+                }
+            }
+        }
     }
 }
 
@@ -570,3 +593,7 @@ fun showVideoMenu(context: Context){
     VideoPlayer(config = config)
 }
 
+@Composable
+fun showSettingsMenu(context: Context){
+
+}

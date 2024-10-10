@@ -16,12 +16,14 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -111,12 +113,12 @@ fun PlanningMenu(context: Context){
     val viewModel: PathOpVM = viewModel()
     Row{
         Button(onClick = {
-            //viewModel.onOpenButtonClick(context)
+            viewModel.onOpenButtonClick(context)
         }){
             Text("Open plan")
         }
         Button(onClick = {
-            //viewModel.onSaveButtonClick(context)
+            viewModel.onSaveButtonClick(context)
         }){
             Text("Save plan")
         }
@@ -170,27 +172,28 @@ fun MonitoringContent(trackPlanned: List<LatLng>, trackReal: List<LatLng>){
 @Composable
 fun MonitoringMenu(context: Context){
     val dButton = 50.dp
+    val viewModel: PathOpVM = viewModel()
     Row {
         // Remote control
         Column{
-            FloatingActionButton(onClick = {  },
+            FloatingActionButton(onClick = { viewModel.onRemoteCommand(context) },
                 modifier = Modifier
                     .size(dButton, dButton)) {
                 Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Forward")
             }
             Row {
-                FloatingActionButton(onClick = {  },
+                FloatingActionButton(onClick = { viewModel.onRemoteCommand(context) },
                     modifier = Modifier
                         .size(dButton, dButton)) {
                     Icon(Icons.AutoMirrored.TwoTone.KeyboardArrowLeft, contentDescription = "Left")
                 }
-                FloatingActionButton(onClick = {  },
+                FloatingActionButton(onClick = { viewModel.onRemoteCommand(context) },
                     modifier = Modifier
                         .size(dButton, dButton)) {
                     Icon(Icons.AutoMirrored.TwoTone.KeyboardArrowRight, contentDescription = "Right")
                 }
             }
-            FloatingActionButton(onClick = {  },
+            FloatingActionButton(onClick = { viewModel.onRemoteCommand(context) },
                 modifier = Modifier
                     .size(dButton, dButton)) {
                 Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Backward")
@@ -227,12 +230,68 @@ fun VideoMenu(context: Context){
     //VideoPlayer(config = config)
     VidePlayerSimple(config = config)
 }
+fun saveAddress(context: Context, key: String, address: String) {
+    val sharedPreferences = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+    with(sharedPreferences.edit()) {
+        putString(key, address)
+        apply()
+    }
+}
+
+fun loadAddress(context: Context, key: String, default: String): String {
+    val sharedPreferences = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+    return sharedPreferences.getString(key, default) ?: default
+}
+
+@Composable
+fun SettingsMenu(context: Context) {
+    Column {
+        AddressInputField(
+            context = context,
+            label = "USV Address",
+            preferenceKey = "usvSimAddress",
+            defaultValue = "127.0.0.1:8080"
+        )
+        AddressInputField(
+            context = context,
+            label = "AIS Address",
+            preferenceKey = "aisSimAddress",
+            defaultValue = "127.0.0.1:8080"
+        )
+        AddressInputField(
+            context = context,
+            label = "Meteo Address",
+            preferenceKey = "meteoSimAddress",
+            defaultValue = "127.0.0.1:8080"
+        )
+    }
+}
+
+@Composable
+fun AddressInputField(context: Context, label: String, preferenceKey: String, defaultValue: String) {
+    // Load the persisted value on initial render
+    var address by remember {
+        mutableStateOf(loadAddress(context, preferenceKey, defaultValue))
+    }
+
+    // TextField for user input
+    TextField(
+        value = address,
+        onValueChange = {
+            address = it
+            saveAddress(context, preferenceKey, address) // Save on every change
+        },
+        label = { Text(label) }
+    )
+}
+
 
 @Composable
 fun C2MainScreen(context: Context){
-
+    val c2MarkerLat = loadAddress(context, "c2Lat", "44.449762").toDouble()
+    val c2MarkerLon = loadAddress(context, "c2Lon", "26.041717").toDouble()
     val c2Marker by remember{
-        mutableStateOf(LatLng(44.449762, 26.041717))
+        mutableStateOf(LatLng(c2MarkerLat, c2MarkerLon))
     }
     val cameraPositionState = rememberCameraPositionState{
         position = CameraPosition.fromLatLngZoom(c2Marker, 15f)
@@ -279,9 +338,13 @@ fun C2MainScreen(context: Context){
                 // detect usv presence
                 try {
                     val knownUSVPos = getUsvGps(context)
+                    Log.i("knownUSVPos", knownUSVPos.Latitude.toString() + " " + knownUSVPos.Longitude.toString())
 
-                    usvMarker = generateNewPosition(LatLng(knownUSVPos.Latitude, knownUSVPos.Longitude))
-                    pathViewModel.onNewReceivedPosition(receivedPos = usvMarker)
+                    //usvMarker = generateNewPosition(LatLng(knownUSVPos.Latitude, knownUSVPos.Longitude))
+                    usvMarker = LatLng(knownUSVPos.Latitude / 100, knownUSVPos.Longitude / 100)
+                    //pathViewModel.onNewReceivedPosition(receivedPos = usvMarker)
+                    pathViewModel.onNewReceivedPosition(receivedPos = LatLng(knownUSVPos.Latitude / 100, knownUSVPos.Longitude / 100) )
+
                     /*
                     realTrack = realTrack.toMutableList().apply { add(usvMarker) }
                     if (realTrack.size > usvLastPosLog){
@@ -335,12 +398,16 @@ fun C2MainScreen(context: Context){
                     icon = BitmapDescriptorFactory.fromResource(R.mipmap.usv)
                 )
 
+
+                /*
                 Marker(
                     state = MarkerState(aisMarker),
                     title = "AIS",
                     snippet = "(${aisMarker.latitude},${aisMarker.longitude})",
                     icon = BitmapDescriptorFactory.fromResource(R.mipmap.usv)
                 )
+
+                 */
 
                 ContentComposable(trackPlanned = usvPath,
                     trackReal = usvRTPos,
@@ -360,64 +427,60 @@ fun C2MainScreen(context: Context){
                  */
             }
 
-            Row{
-                FloatingActionButton(onClick = {
-                    dynamicMenu = { PlanningMenu(context) }
-                    //clickedPoints = clickedPoints.toMutableList().apply { clear() }
-                    dynamicContent = { usvPath, usvRTPos ->
-                        PlanningContent(trackPlanned = usvPath, trackReal = usvRTPos)
+            Column{
+                Row{
+                    FloatingActionButton(onClick = {
+                        dynamicMenu = { PlanningMenu(context) }
+                        //clickedPoints = clickedPoints.toMutableList().apply { clear() }
+                        dynamicContent = { usvPath, usvRTPos ->
+                            PlanningContent(trackPlanned = usvPath, trackReal = usvRTPos)
+                        }
+                        pathViewModel.resetPlanning()
+                    },
+                        modifier = Modifier
+                            .size(30.dp, 30.dp))
+                    {
+                        Icon(
+                            Icons.Default.Build,
+                            contentDescription = "Planning"
+                        )
                     }
-                    pathViewModel.resetPlanning()
-                   },
-                    modifier = Modifier
-                        .size(30.dp, 30.dp))
-                {
-                    Icon(
-                        Icons.Default.Build,
-                        contentDescription = "Planning"
-                    )
-                }
-                FloatingActionButton(onClick = {
-                    dynamicMenu = { MonitoringMenu(context) }
-                    dynamicContent = { usvPath, usvRTPos ->
-                        MonitoringContent(trackPlanned = usvPath, trackReal = usvRTPos)
+                    FloatingActionButton(onClick = {
+                        dynamicMenu = { MonitoringMenu(context) }
+                        dynamicContent = { usvPath, usvRTPos ->
+                            MonitoringContent(trackPlanned = usvPath, trackReal = usvRTPos)
+                        }
+                        pathViewModel.resetPlanning()
+                        pathViewModel.resetTracking()
+                    },
+                        modifier = Modifier
+                            .size(30.dp, 30.dp))
+                    {
+                        Icon(
+                            Icons.Default.Place,
+                            contentDescription = "Monitoring"
+                        )
                     }
-                    pathViewModel.resetPlanning()
-                    pathViewModel.resetTracking()
-                   },
-                    modifier = Modifier
-                        .size(30.dp, 30.dp))
-                {
-                    Icon(
-                        Icons.Default.Place,
-                        contentDescription = "Monitoring"
-                    )
-                }
-                FloatingActionButton(onClick = {dynamicMenu = { VideoMenu(context) } },
-                    modifier = Modifier
-                        .size(30.dp, 30.dp))
-                {
-                    Icon(
-                        Icons.Default.PlayArrow,
-                        contentDescription = "Video"
-                    )
-                }
+                    FloatingActionButton(onClick = {dynamicMenu = { VideoMenu(context) } },
+                        modifier = Modifier
+                            .size(30.dp, 30.dp))
+                    {
+                        Icon(
+                            Icons.Default.PlayArrow,
+                            contentDescription = "Video"
+                        )
+                    }
 
-                /*
-                Column{
-                    Button(onClick = {
-                        //something
-                        someDataViewModel.addElement()
-                    }){
-                        Text(text = "apasa")
-                    }
-                    elements.forEach {
-                        Text(
-                            text = "Number $it"
+                    FloatingActionButton(onClick = {dynamicMenu = {SettingsMenu(context)}},
+                        modifier = Modifier
+                            .size(30.dp, 30.dp))
+                    {
+                        Icon(
+                            Icons.Default.Settings,
+                            contentDescription = "Settings"
                         )
                     }
                 }
-                 */
 
                 MenuComposable {
                     dynamicMenu()
