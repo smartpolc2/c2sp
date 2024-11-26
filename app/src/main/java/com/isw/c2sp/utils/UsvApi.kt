@@ -3,6 +3,7 @@ package com.isw.c2sp.utils
 import android.content.Context
 import android.util.Log
 import androidx.core.content.ContextCompat.getString
+import com.google.android.gms.maps.model.LatLng
 import com.google.firebase.Firebase
 import com.google.firebase.database.database
 import com.google.gson.Gson
@@ -19,6 +20,8 @@ import java.net.URL
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import javax.net.ssl.HttpsURLConnection
+import kotlin.math.floor
+import kotlin.math.round
 
 fun getUsvPollution(context: Context):Pollution{
     //val result = withContext(Dispatchers.IO) {
@@ -49,6 +52,10 @@ fun getUsvPollution(context: Context):Pollution{
             throw Exception("Usv API not available")
         }
     //}
+}
+
+fun getC2Gps(context: Context): LatLng {
+    return LatLng(0.00, 0.00)
 }
 
 fun getUsvGps(context: Context):USVGps{
@@ -168,4 +175,13 @@ fun putUsvRCCommand(context: Context):USVCommand{
         throw Exception("Usv API not available")
     }
 
+}
+
+fun convertPosToDD (valDMS: Double): Double{
+    val roundVal = floor(valDMS / 100)
+    val minVal = valDMS - roundVal * 100
+    val minDec = minVal / 60
+    val valDD = roundVal + minDec
+    Log.i("convertPosToDD", valDMS.toString() + "=" + roundVal.toString() + "+" +minDec.toString())
+    return valDD
 }

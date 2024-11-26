@@ -1,8 +1,10 @@
 package com.isw.c2sp.screens
 
 
+import android.Manifest
 import android.content.Context
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,6 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,19 +39,25 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat.getString
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.isw.c2sp.R
+import com.isw.c2sp.utils.convertPosToDD
 import com.isw.c2sp.utils.getUsvGps
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlin.math.round
 
 
 @Composable
@@ -297,30 +306,127 @@ fun AddressInputField(context: Context, label: String, preferenceKey: String, de
     )
 }
 
-
 @Composable
-fun C2MainScreen(context: Context){
-    val c2MarkerLat = loadAddress(context, "c2Lat", "44.449762").toDouble()
-    val c2MarkerLon = loadAddress(context, "c2Lon", "26.041717").toDouble()
-    val c2Marker by remember{
+fun C2GoogleMap(c2Loc: LatLng?,
+                usvLoc: LatLng?){
+    val cameraPositionState = rememberCameraPositionState {
+        position = com.google.android.gms.maps.model.CameraPosition.fromLatLngZoom(
+            c2Loc ?: LatLng(44.449762, 26.041717), // Default to fallback location if null
+            14f
+        )
+    }
+
+    // Update camera position when the current location changes
+    LaunchedEffect(c2Loc) {
+        c2Loc?.let {
+            cameraPositionState.position = com.google.android.gms.maps.model.CameraPosition.fromLatLngZoom(it, 14f)
+        }
+    }
+    /*
+                    GoogleMap(
+                        //cameraPositionState = cameraPositionState,
+                        onMapClick = {
+                                clickPoint ->
+                            /*
+                                usvPath.add(clickPoint)
+                            clickedPoints = clickedPoints.toMutableList().apply { add(clickPoint) }
+
+                             */
+                            pathViewModel.onMapClick(clickPoint = clickPoint)
+                            //Log.i("GoogleMap", "clicked point = " + clickedPoints.size.toString())
+                        }
+                    ){
+
+                        ContentComposable(trackPlanned = usvPath,
+                            trackReal = usvRTPos,
+                            dynamicContent = dynamicContent
+                        )
+
+                        /*
+                        usvPath.forEach{
+                            Polyline(points = usvPath,
+                                color = Color.Blue)
+                        }
+
+                        usvRTPos.forEach{
+                            Polyline(points = usvRTPos,
+                                color = Color.Green)
+                        }
+                         */
+                    }
+
+                     */
+    GoogleMap(
+        modifier = Modifier.fillMaxSize(),
+        cameraPositionState = cameraPositionState
+    ) {
+        c2Loc?.let {
+            Marker(
+                state = MarkerState(it),
+                title = "C2",
+                snippet = "(${it.latitude},${it.longitude})",
+                icon = BitmapDescriptorFactory.fromResource(R.mipmap.c2)
+            )
+        }
+
+        usvLoc?.let {
+            Marker(
+                state = MarkerState(it),
+                title = "USV",
+                snippet = "(${it.latitude},${it.longitude})",
+                icon = BitmapDescriptorFactory.fromResource(R.mipmap.usv)
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalPermissionsApi::class)
+@Composable
+fun C2MainScreen(context: Context,
+                 currentLocationState: State<LatLng?>
+){
+    // Manage location permissions
+    val locationPermissionState = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION)
+
+    // Request permission if not granted
+    LaunchedEffect(locationPermissionState) {
+        if (!locationPermissionState.status.isGranted) {
+            locationPermissionState.launchPermissionRequest()
+        }
+    }
+
+    /*
+    var c2Location by remember {
+        mutableStateOf<LatLng?>(null)
+    }
+
+    var c2MarkerLat = loadAddress(context, "c2Lat", "44.449762").toDouble()
+    var c2MarkerLon = loadAddress(context, "c2Lon", "26.041717").toDouble()
+    var c2Marker by remember{
         mutableStateOf(LatLng(c2MarkerLat, c2MarkerLon))
     }
+    Log.i("initial C2Marker", c2Marker.toString())
+
     val cameraPositionState = rememberCameraPositionState{
-        position = CameraPosition.fromLatLngZoom(c2Marker, 15f)
+        position = CameraPosition.fromLatLngZoom(c2Marker, 5f)
     }
+     */
+
     //var usvMarker = generateNewPosition(c2Marker)
     var usvMarker by remember{
         mutableStateOf(LatLng(44.449762, 26.041717))
+        //mutableStateOf(LatLng(currentLocationState.value.latitude, currentLocationState.value.longitude))
     }
     var aisMarker by remember{
         mutableStateOf(LatLng(44.449762, 26.041717))
+        //mutableStateOf(LatLng(currentLocationState.value.latitude, currentLocationState.value.longitude))
     }
 
     val pathViewModel: PathOpVM = viewModel()
     val usvPath = pathViewModel.usvPath
     val usvRTPos = pathViewModel.usvRTPos
 
-    val usvLastPosLog = getString(context, R.string.usvLastPosLog).toInt()
+    //val usvLastPosLog = getString(context, R.string.usvLastPosLog).toInt()
     var realTrack by remember { mutableStateOf(emptyList<LatLng>()) }
 
     //usv planned path
@@ -346,16 +452,37 @@ fun C2MainScreen(context: Context){
 
     LaunchedEffect(key1 = Unit) {
         while (true) {
+            /*
+            //Updates C2 App location
+            c2MarkerLat = loadAddress(context, "c2Lat", "44.449762").toDouble()
+            c2MarkerLon = loadAddress(context, "c2Lon", "26.041717").toDouble()
+            c2Marker = LatLng(c2MarkerLat, c2MarkerLon)
+            Log.i("C2Marker", c2Marker.toString())
+             */
+
             val result = withContext(Dispatchers.IO){
                 // detect usv presence
                 try {
                     val knownUSVPos = getUsvGps(context)
                     Log.i("knownUSVPos", knownUSVPos.Latitude.toString() + " " + knownUSVPos.Longitude.toString())
+                    val usvMarkerLat = convertPosToDD(knownUSVPos.Latitude)
+                    val usvMarkerLon = convertPosToDD(knownUSVPos.Longitude)
+                    Log.i("knownUSVPos DD", usvMarkerLat.toString() + " " + usvMarkerLon.toString())
+                    if (usvMarkerLat == 99999.99 || usvMarkerLon == 99999.99)
+                        throw Exception("USV GPS is in error state")
 
                     //usvMarker = generateNewPosition(LatLng(knownUSVPos.Latitude, knownUSVPos.Longitude))
-                    usvMarker = LatLng(knownUSVPos.Latitude / 100, knownUSVPos.Longitude / 100)
+                    usvMarker = LatLng(usvMarkerLat, usvMarkerLon)
                     //pathViewModel.onNewReceivedPosition(receivedPos = usvMarker)
-                    pathViewModel.onNewReceivedPosition(receivedPos = LatLng(knownUSVPos.Latitude / 100, knownUSVPos.Longitude / 100) )
+                    /*
+                    Toast.makeText(
+                        context,
+                        "Lat: $usvMarker.latitude, Lon: $usvMarker.longitude",
+                        Toast.LENGTH_LONG
+                    ).show()
+                     */
+
+                    pathViewModel.onNewReceivedPosition(receivedPos = usvMarker )
 
                     /*
                     realTrack = realTrack.toMutableList().apply { add(usvMarker) }
@@ -383,61 +510,71 @@ fun C2MainScreen(context: Context){
         color = MaterialTheme.colorScheme.background
     ){
         Box {
-            GoogleMap(
-                cameraPositionState = cameraPositionState,
-                onMapClick = {
-                    clickPoint ->
+            if (locationPermissionState.status.isGranted) {
+                /*
+                GoogleMap(
+                    //cameraPositionState = cameraPositionState,
+                    onMapClick = {
+                            clickPoint ->
+                        /*
+                            usvPath.add(clickPoint)
+                        clickedPoints = clickedPoints.toMutableList().apply { add(clickPoint) }
+
+                         */
+                        pathViewModel.onMapClick(clickPoint = clickPoint)
+                        //Log.i("GoogleMap", "clicked point = " + clickedPoints.size.toString())
+                    }
+                ){
+                    Marker(
+                        state = MarkerState(c2Marker),
+                        title = "C2",
+                        snippet = "(${c2Marker.latitude},${c2Marker.longitude})",
+                        icon = BitmapDescriptorFactory.fromResource(R.mipmap.c2)
+                    )
+
+                    Marker(
+                        state = MarkerState(usvMarker),
+                        title = "USV",
+                        snippet = "(${usvMarker.latitude},${usvMarker.longitude})",
+                        icon = BitmapDescriptorFactory.fromResource(R.mipmap.usv)
+                    )
+
+
                     /*
-                        usvPath.add(clickPoint)
-                    clickedPoints = clickedPoints.toMutableList().apply { add(clickPoint) }
+                    Marker(
+                        state = MarkerState(aisMarker),
+                        title = "AIS",
+                        snippet = "(${aisMarker.latitude},${aisMarker.longitude})",
+                        icon = BitmapDescriptorFactory.fromResource(R.mipmap.usv)
+                    )
 
                      */
-                    pathViewModel.onMapClick(clickPoint = clickPoint)
-                    //Log.i("GoogleMap", "clicked point = " + clickedPoints.size.toString())
+
+                    ContentComposable(trackPlanned = usvPath,
+                        trackReal = usvRTPos,
+                        dynamicContent = dynamicContent
+                    )
+
+                    /*
+                    usvPath.forEach{
+                        Polyline(points = usvPath,
+                            color = Color.Blue)
+                    }
+
+                    usvRTPos.forEach{
+                        Polyline(points = usvRTPos,
+                            color = Color.Green)
+                    }
+                     */
                 }
-            ){
-                Marker(
-                    state = MarkerState(c2Marker),
-                    title = "C2",
-                    snippet = "(${c2Marker.latitude},${c2Marker.longitude})",
-                    icon = BitmapDescriptorFactory.fromResource(R.mipmap.c2)
-                )
-
-                Marker(
-                    state = MarkerState(usvMarker),
-                    title = "USV",
-                    snippet = "(${usvMarker.latitude},${usvMarker.longitude})",
-                    icon = BitmapDescriptorFactory.fromResource(R.mipmap.usv)
-                )
-
-
-                /*
-                Marker(
-                    state = MarkerState(aisMarker),
-                    title = "AIS",
-                    snippet = "(${aisMarker.latitude},${aisMarker.longitude})",
-                    icon = BitmapDescriptorFactory.fromResource(R.mipmap.usv)
-                )
 
                  */
-
-                ContentComposable(trackPlanned = usvPath,
-                    trackReal = usvRTPos,
-                    dynamicContent = dynamicContent
-                )
-
-                /*
-                usvPath.forEach{
-                    Polyline(points = usvPath,
-                        color = Color.Blue)
-                }
-
-                usvRTPos.forEach{
-                    Polyline(points = usvRTPos,
-                        color = Color.Green)
-                }
-                 */
+                C2GoogleMap(c2Loc = currentLocationState.value,
+                    usvLoc = usvMarker)
+            } else {
+                Text("Permission not granted")
             }
+
 
             Column{
                 Row{
