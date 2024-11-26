@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "993823920126",
+    "project_id": "pollutiondb",
+    "storage_bucket": "pollutiondb.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:993823920126:android:80df44dbd3b331d6703aaf",
+        "android_client_info": {
+          "package_name": "com.isw.c2sp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB24Pp3-h3urs5qaAm1JY5MtOKlm7ztLNo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
