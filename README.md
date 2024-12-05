@@ -1,4 +1,10 @@
-## Hi there 👋
+SmartPol
+
+-	[R1] Dezvoltarea unui ansamblu pentru achiziția de date de la senzori
+-	[R2] Dezvoltarea unui ansamblu de comunicație la distanță în platforma de achiziție de date și țărm
+-	[R3] Dezvoltarea unei aplicații informatice pentru monitorizarea de la distanță a funcționării platformei de achiziții de date
+
+
 
 <!--
 **smartpolc2/smartpolc2** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
