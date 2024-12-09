@@ -10,6 +10,8 @@ Modulul de comunicație Lora este un ansamblu hardware și software care funcți
 Modulul de comunicație Lora are o parte care se instalează pe platforma care efectuează măsurătorile (poate fi o barcă sau o dronă navală) și o parte care se instalează la țărm, de unde se operează întreg ansamblul.
 Aplicația de comandă și control [R3] realizată permite monitorizarea stării platformei de achiziție, preluarea datelor privind poluarea, planificarea unei rute de voiaj și comanda navigației.
 
+https://github.com/smartpolc2/c2sp/wiki
+
 <!--
 **smartpolc2/smartpolc2** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
 
