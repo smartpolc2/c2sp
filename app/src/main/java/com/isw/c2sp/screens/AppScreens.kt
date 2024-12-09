@@ -308,7 +308,20 @@ fun AddressInputField(context: Context, label: String, preferenceKey: String, de
 
 @Composable
 fun C2GoogleMap(c2Loc: LatLng?,
-                usvLoc: LatLng?){
+                usvLoc: LatLng?,
+                path: List<LatLng>?
+){
+    val pathViewModel: PathOpVM = viewModel()
+    val usvPath = pathViewModel.usvPath
+    val usvRTPos = pathViewModel.usvRTPos
+
+    C2GoogleMap(c2Loc, usvLoc)
+}
+
+@Composable
+fun C2GoogleMap(c2Loc: LatLng?,
+                usvLoc: LatLng?
+){
     val cameraPositionState = rememberCameraPositionState {
         position = com.google.android.gms.maps.model.CameraPosition.fromLatLngZoom(
             c2Loc ?: LatLng(44.449762, 26.041717), // Default to fallback location if null

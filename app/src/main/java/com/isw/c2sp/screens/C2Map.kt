@@ -221,7 +221,7 @@ fun getRandomOffset(): Double {
 @Composable
 fun c2Maker(c2Pos: LatLng){
     Marker(
-        state = MarkerState(c2Pos),
+        state = MarkerState(position = c2Pos),
         title = "C2",
         snippet = "(${c2Pos.latitude},${c2Pos.longitude})",
         icon = BitmapDescriptorFactory.fromResource(R.mipmap.c2)
@@ -231,7 +231,7 @@ fun c2Maker(c2Pos: LatLng){
 @Composable
 fun usvMarker(usvPos: LatLng){
     Marker(
-        state = MarkerState(usvPos),
+        state = MarkerState(position = usvPos),
         title = "USV",
         snippet = "(${usvPos.latitude},${usvPos.longitude})",
         icon = BitmapDescriptorFactory.fromResource(R.mipmap.usv)
@@ -389,6 +389,10 @@ class PathOpVM: androidx.lifecycle.ViewModel(){
                 Log.e("saving USV path - Exception caught", e.toString())
             }
         }
+    }
+
+    fun onRemoteCommand(context: Context){
+
     }
 
     fun onMapClick(clickPoint: LatLng){
